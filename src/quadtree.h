@@ -103,7 +103,8 @@ public:
 	}
 	void insert(T data, float x, float y)
 	{
-		if (!aabb.contains(x,y)) assert(!"QuadTree::insert: bounds");
+		if (!aabb.contains(x,y))
+			assert(!"QuadTree::insert: bounds");
 
 		if (!hasChildren)
 		{

@@ -219,9 +219,10 @@ int main()
 						else
 						{
 							// Clear selection
-							for (size_t i = 0; i < selection.size(); ++i)
-								selection[i]->deselect();
-							selection.clear();
+							//for (size_t i = 0; i < selection.size(); ++i)
+							//	selection[i]->deselect();
+							//selection.clear();
+							selection.clearSelection();
 						}
 					}
 				}
@@ -249,7 +250,7 @@ int main()
 					{
 						if (mouseDragSelecting)
 						{
-							// Add all to selection
+							// Add all to selection (that aren't already selected)
 							std::vector<Node*> v;
 							qt.queryRegion(dragx1, dragy1, dragx2, dragy2, v);
 							for (size_t i = 0; i < v.size(); ++i)
@@ -258,6 +259,7 @@ int main()
 								{
 									v[i]->select();
 									selection.push_back(v[i]);
+									selection.updateSelectionBounds(v[i]);
 								}
 							}
 						}
@@ -298,12 +300,17 @@ int main()
 					}
 					else if (mouseClickingSelection)
 					{
+						//for (size_t i = 0; i < selection.size(); ++i)
+						//{
+						//	qt.erase(selection[i], selection[i]->x, selection[i]->y);
+						//	selection[i]->move(dragx2-prevx, dragy2-prevy);
+						//	qt.insert(selection[i], selection[i]->x, selection[i]->y);
+						//}
 						for (size_t i = 0; i < selection.size(); ++i)
-						{
 							qt.erase(selection[i], selection[i]->x, selection[i]->y);
-							selection[i]->move(dragx2-prevx, dragy2-prevy);
+						selection.moveSelection(dragx2-prevx, dragy2-prevy);
+						for (size_t i = 0; i < selection.size(); ++i)
 							qt.insert(selection[i], selection[i]->x, selection[i]->y);
-						}
 					}
 				}
 

@@ -20,12 +20,17 @@ public:
 		clear();
 	}
 
+	void moveSelection(int x, int y)
+	{
+		moveSelection((float)x, (float)y);
+	}
 	void moveSelection(float x, float y)
 	{
-		if (empty() || xmin+x < gxmin || ymin+y < gymin || xmax+x > gxmax || ymax+y > gymax) return;
+		if (empty() || xmin+x <= gxmin || ymin+y <= gymin || xmax+x >= gxmax || ymax+y >= gymax) return;
 
 		for (size_t i = 0; i < size(); ++i)
 			(*this)[i]->move(x, y);
+		moveSelectionBounds(x, y);
 	}
 
 	void updateSelectionBounds(Node* n)
@@ -40,8 +45,16 @@ public:
 			if (n->x < xmin) xmin = n->x;
 			if (n->y < ymin) ymin = n->y;
 			if (n->x > xmax) xmax = n->x;
-			if (n->y > ymax) ymax = n->x;
+			if (n->y > ymax) ymax = n->y;
 		}
+	}
+
+	void moveSelectionBounds(float x, float y)
+	{
+		xmin += x;
+		ymin += y;
+		xmax += x;
+		ymax += y;
 	}
 
 	void resetSelectionBounds()
@@ -56,7 +69,7 @@ public:
 			if ((*i)->x < xmin) xmin = (*i)->x;
 			if ((*i)->y < ymin) ymin = (*i)->y;
 			if ((*i)->x > xmax) xmax = (*i)->x;
-			if ((*i)->x < ymax) xmin = (*i)->x;
+			if ((*i)->y > ymax) ymax = (*i)->y;
 		}
 	}
 
