@@ -1,5 +1,16 @@
 #pragma once
 
+/*///=====================================================================
+
+	quadtree.h
+
+	Author: Matthew Alpert
+	Updated: April 20, 2012
+
+	A templatized quad tree class.
+
+*///======================================================================
+
 #include <assert.h>
 #include <vector>
 #include <algorithm>
@@ -10,11 +21,7 @@
 #include <SFML/Graphics.hpp>
 #endif
 
-#define MAX_ITEMS_PER_CELL 5
-#define MAX_DEPTH 10
-
-typedef int T;
-//template<typename T>
+template<typename T, int MAX_ITEMS_PER_CELL=6, int MAX_DEPTH=10>
 class QuadTree
 {
 private:
@@ -63,6 +70,11 @@ private:
 
 public:
 
+	//
+	// QuadTree
+	//
+	// Constructs a QuadTree cell based on the given lower and upper bounds.
+	//
 	QuadTree(float x1, float y1, float x2, float y2, int depth = 0)
 		: depth(depth), hasChildren(0), c1(0), c2(0), c3(0), c4(0)
 	{
@@ -80,6 +92,15 @@ public:
 		if (c4) delete c4;
 	}
 
+	//
+	// insert
+	//
+	// Inserts data into the appropriate cell. Does not check for uniqueness.
+	//
+	void insert(T data, int x, int y)
+	{
+		insert(data, (float)x, (float)y);
+	}
 	void insert(T data, float x, float y)
 	{
 		if (!aabb.contains(x,y)) assert(!"QuadTree::insert: bounds");
@@ -107,6 +128,12 @@ public:
 		}
 	}
 
+	//
+	// getAllItems
+	//
+	// Pushes all items bound by this cell into the vector and returns the
+	// number of items.
+	//
 	int getAllItems(std::vector<T> & ret)
 	{
 		ret.reserve(ret.size() + numItems());
@@ -114,11 +141,27 @@ public:
 		return ret.size();
 	}
 
+	//
+	// queryRegion
+	//
+	// Pushes all items bounded by the intersection of this cell and the given
+	// region into the vector and returns the number of items.
+	//
+	int queryRegion(int x1, int y1, int x2, int y2, std::set<T> & ret)
+	{
+		return queryRegion((float)x1, (float)y1, (float)x2, (float)y2, ret);
+	}
+	int queryRegion(float x1, float y1, float x2, float y2, std::set<T> & ret)
+	{
+		std::vector<T> v;
+		queryRegion(x1, y1, x2, y2, v);
+		ret.insert(v.begin(), v.end());
+		return ret.size();
+	}
 	int queryRegion(int x1, int y1, int x2, int y2, std::vector<T> & ret)
 	{
 		return queryRegion((float)x1, (float)y1, (float)x2, (float)y2, ret);
 	}
-
 	int queryRegion(float x1, float y1, float x2, float y2, std::vector<T> & ret)
 	{
 		AABB region;
@@ -130,17 +173,44 @@ public:
 		return ret.size();
 	}
 
+	//
+	// erase
+	//
+	// Searches all items bounded by this cell and erases the first one that
+	// equals the argument, if any.
+	//
 	bool erase(T data)
 	{
 		bool canUnify = false;
 		return erase(data, canUnify);
 	}
 
+	//
+	// erase
+	//
+	// Traverses down to find the leaf cell that contains the given point, then
+	// deletes the first item in that cell that equals the argument, if any.
+	//
+	bool erase(T data, int x, int y)
+	{
+		return erase(data, (float)x, (float)y);
+	}
+	bool erase(T data, float x, float y)
+	{
+		bool canUnify = false;
+		return erase(data, x, y, canUnify);
+	}
+
+	//
+	// erase
+	//
+	// Erases all items that equal the argument, if any, that are bounded by
+	// the intersection of this cell and the given region.
+	//
 	int erase(T data, int x1, int y1, int x2, int y2)
 	{
 		return erase(data, (float)x1, (float)y1, (float)x2, (float)y2);
 	}
-
 	int erase(T data, float x1, float y1, float x2, float y2)
 	{
 		AABB region;
@@ -152,6 +222,26 @@ public:
 		return erase(data, region, canUnify);
 	}
 
+	//
+	// contains
+	//
+	// Returns whether the given point is contained within this cell.
+	//
+	bool contains(int x, int y)
+	{
+		return contains((float)x, (float)y);
+	}
+	bool contains(float x, float y)
+	{
+		return aabb.contains(x, y);
+	}
+
+	//
+	// numItems
+	//
+	// Returns the number of items bound by this cell by recursively checking
+	// all child cells.
+	//
 	int numItems()
 	{
 		int ret = items.size();
@@ -165,6 +255,12 @@ public:
 		return ret;
 	}
 
+	//
+	// numCells
+	//
+	// Returns the number of cells bound by and including this cell by
+	// recursively checking all child cells.
+	//
 	int numCells()
 	{
 		int ret = 1;
@@ -179,6 +275,11 @@ public:
 	}
 
 #ifdef SFMLDEBUG
+	//
+	// draw
+	//
+	// Recursively draws the QuadTree to the given RenderWindow.
+	//
 	void draw(sf::RenderWindow & rw)
 	{
 		sf::RectangleShape rect(sf::Vector2f(aabb.hw*2, aabb.hh*2));
@@ -267,10 +368,55 @@ private:
 		if (hasChildren)
 		{
 			bool deleted = false;
+
 			if (c1->erase(data, canUnify)) deleted = true;
 			else if (c2->erase(data, canUnify)) deleted = true;
 			else if (c3->erase(data, canUnify)) deleted = true;
 			else if (c4->erase(data, canUnify)) deleted = true;
+			else return false;
+
+			if (canUnify)
+			{
+				if (numItems() <= MAX_ITEMS_PER_CELL/2)
+				{
+					unify();
+					return true;
+				}
+				else
+				{
+					canUnify = false;
+					return true;
+				}
+			}
+			return deleted;
+		}
+		else
+		{
+			for (std::vector<Item>::iterator itr = items.begin(); itr != items.end(); ++itr)
+			{
+				if (itr->data == data)
+				{
+					items.erase(itr); // invalidates iterators
+					canUnify = true;
+					return true;
+				}
+			}
+			return false;
+		}
+	}
+
+	bool erase(T data, float x, float y, bool & canUnify)
+	{
+		if (!aabb.contains(x,y)) assert(!"QuadTree::erase: bounds");
+
+		if (hasChildren)
+		{
+			bool deleted = false;
+
+			if (c1->aabb.contains(x,y)) deleted = c1->erase(data, x, y, canUnify);
+			else if (c2->aabb.contains(x,y)) deleted = c2->erase(data, x, y, canUnify);
+			else if (c3->aabb.contains(x,y)) deleted = c3->erase(data, x, y, canUnify);
+			else if (c4->aabb.contains(x,y)) deleted = c4->erase(data, x, y, canUnify);
 			else return false;
 
 			if (canUnify)
