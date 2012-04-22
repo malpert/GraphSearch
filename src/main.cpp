@@ -59,7 +59,6 @@ int main()
 	bool mouseDragMoving = false;
 	bool mouseDragSelecting = false;
 	bool mouseDownOnSelection = false;
-	bool mouseJustAddedSelection = false;
 	int dragx1 = 0;
 	int dragy1 = 0;
 	int prevx = 0;
@@ -170,27 +169,6 @@ int main()
 							mouseDownOnSelection = true;
 						}
 					}
-					else if (keyAltDown) // Alt
-					{
-						// Check if mouse over nodes
-						std::vector<Node*> v;
-						if (qt.queryRegion(Event.mouseButton.x+selectRange, Event.mouseButton.y+selectRange, Event.mouseButton.x-selectRange, Event.mouseButton.y-selectRange, v))
-						{
-							// Check if there's a node that's selected
-							for (size_t i = 0; i < v.size(); ++i)
-							{
-								if (v[i]->isSelected())
-								{
-									// Remove single node from selection
-									v[i]->deselect();
-									Selection::iterator it = std::find(selection.begin(), selection.end(), v[i]);
-									selection.erase(it);
-									selection.resetSelectionBounds();
-									break;
-								}
-							}
-						}
-					}
 					else if (keyShiftDown) // Shift
 					{
 						// Check if mouse over nodes
@@ -207,6 +185,27 @@ int main()
 									selection.updateSelectionBounds(v[i]);
 									v[i]->select();
 									mouseDownOnSelection = true;
+									break;
+								}
+							}
+						}
+					}
+					else if (keyAltDown) // Alt
+					{
+						// Check if mouse over nodes
+						std::vector<Node*> v;
+						if (qt.queryRegion(Event.mouseButton.x+selectRange, Event.mouseButton.y+selectRange, Event.mouseButton.x-selectRange, Event.mouseButton.y-selectRange, v))
+						{
+							// Check if there's a node that's selected
+							for (size_t i = 0; i < v.size(); ++i)
+							{
+								if (v[i]->isSelected())
+								{
+									// Remove single node from selection
+									v[i]->deselect();
+									Selection::iterator it = std::find(selection.begin(), selection.end(), v[i]);
+									selection.erase(it);
+									selection.resetSelectionBounds();
 									break;
 								}
 							}
@@ -242,7 +241,7 @@ int main()
 						else
 						{
 							// Clear selection
-							//selection.clearSelection();
+							selection.clearSelection();
 						}
 					}
 				}
@@ -291,7 +290,7 @@ int main()
 							}
 							if (erasedSomething) selection.resetSelectionBounds();
 						}
-						else
+						else if (!keyCtrlDown)
 						{
 							if (!keyShiftDown) // ! Shift
 							{
@@ -311,11 +310,6 @@ int main()
 								}
 							}
 						}
-					}
-					else if (!mouseDownOnSelection && !mouseDragMoving && !keyAltDown && !keyShiftDown && !keyCtrlDown)
-					{
-						// Clear selection
-						selection.clearSelection();
 					}
 
 					mouseLeftDown = false;
@@ -347,11 +341,11 @@ int main()
 				//
 				if (mouseLeftDown)
 				{
-					if (keyAltDown || keyShiftDown || selection.empty())
+					if (!mouseDownOnSelection || keyShiftDown || keyAltDown)
 					{
 						mouseDragSelecting = true;
 					}
-					else if (!selection.empty())
+					else if (mouseDownOnSelection)
 					{
 						mouseDragMoving = true;
 						for (size_t i = 0; i < selection.size(); ++i)
