@@ -364,6 +364,9 @@ private:
 		}
 	}
 
+	//
+	// Erase first match
+	//
 	bool erase(T data, bool & canUnify)
 	{
 		if (hasChildren)
@@ -393,11 +396,11 @@ private:
 		}
 		else
 		{
-			for (std::vector<Item>::iterator itr = items.begin(); itr != items.end(); ++itr)
+			for (std::vector<Item>::iterator it = items.begin(); it != items.end(); ++it)
 			{
-				if (itr->data == data)
+				if (it->data == data)
 				{
-					items.erase(itr); // invalidates iterators
+					items.erase(it); // invalidates iterators
 					canUnify = true;
 					return true;
 				}
@@ -406,9 +409,13 @@ private:
 		}
 	}
 
+	//
+	// Go to lowest cell bounding point and erase first match
+	//
 	bool erase(T data, float x, float y, bool & canUnify)
 	{
-		if (!aabb.contains(x,y)) assert(!"QuadTree::erase: bounds");
+		if (!aabb.contains(x,y))
+			assert(!"QuadTree::erase: bounds");
 
 		if (hasChildren)
 		{
@@ -437,11 +444,11 @@ private:
 		}
 		else
 		{
-			for (std::vector<Item>::iterator itr = items.begin(); itr != items.end(); ++itr)
+			for (std::vector<Item>::iterator it = items.begin(); it != items.end(); ++it)
 			{
-				if (itr->data == data)
+				if (it->data == data)
 				{
-					items.erase(itr); // invalidates iterators
+					items.erase(it); // invalidates iterators
 					canUnify = true;
 					return true;
 				}
@@ -450,6 +457,9 @@ private:
 		}
 	}
 
+	//
+	// Erase all matches in region
+	//
 	int erase(T data, AABB region, bool & canUnify)
 	{
 		int deleted = 0;
@@ -471,15 +481,20 @@ private:
 		}
 		else
 		{
-			for (std::vector<Item>::iterator itr = items.begin(); itr != items.end(); ++itr)
+			std::vector<Item>::iterator it = items.begin();
+			while (it != items.end())
 			{
-				if (itr->data == data)
+				if (it->data == data)
 				{
 					canUnify = true;
 					++deleted;
-					itr = items.erase(itr);
-					if (itr == items.end()) break;
+					it = items.erase(it);
 				}
+				else
+				{
+					++it;
+				}
+
 			}
 			return deleted;
 		}

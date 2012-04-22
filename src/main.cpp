@@ -3,6 +3,7 @@
 #include <vector>
 #include <set>
 #include <math.h>
+#include <algorithm>
 
 #include "node.h"
 #include "selection.h"
@@ -50,13 +51,15 @@ int main()
 	//
 	// State
 	//
+	bool keyAltDown = false;
 	bool keyCtrlDown = false;
 	bool keyShiftDown = false;
 	bool mouseLeftDown = false;
 	bool mouseRightDown = false;
 	bool mouseDragMoving = false;
 	bool mouseDragSelecting = false;
-	bool mouseClickingSelection = false;
+	bool mouseDownOnSelection = false;
+	bool mouseJustAddedSelection = false;
 	int dragx1 = 0;
 	int dragy1 = 0;
 	int prevx = 0;
@@ -86,25 +89,27 @@ int main()
             if (Event.type == sf::Event::KeyPressed)
             {
 				if (Event.key.code == sf::Keyboard::Escape) // Escape
+				{
                     App.close();
-
-                if (Event.key.code == sf::Keyboard::F1) // F1
+				}
+				else if (Event.key.code == sf::Keyboard::F1) // F1
                 {
                     sf::Image Screen = App.capture();
                     Screen.saveToFile("../media/screenshot.jpg");
                 }
-
-				if (Event.key.code == sf::Keyboard::RControl) // RControl
+				else if (Event.key.code == sf::Keyboard::RAlt) // RAlt
+				{
+					keyAltDown = true;
+				}
+				else if (Event.key.code == sf::Keyboard::RControl) // RControl
 				{
 					keyCtrlDown = true;
 				}
-
-				if (Event.key.code == sf::Keyboard::RShift) // RShift
+				else if (Event.key.code == sf::Keyboard::RShift) // RShift
 				{
 					keyShiftDown = true;
 				}
-
-				if (Event.key.code == sf::Keyboard::Delete) // Delete
+				else if (Event.key.code == sf::Keyboard::Delete) // Delete
 				{
 					// Delete selected nodes
 					for (size_t i = 0; i < selection.size(); ++i)
@@ -122,12 +127,15 @@ int main()
 			//
 			if (Event.type == sf::Event::KeyReleased)
 			{
-				if (Event.key.code == sf::Keyboard::RControl) // RControl
+				if (Event.key.code == sf::Keyboard::RAlt) // RAlt
+				{
+					keyAltDown = false;
+				}
+				else if (Event.key.code == sf::Keyboard::RControl) // RControl
 				{
 					keyCtrlDown = false;
 				}
-
-				if (Event.key.code == sf::Keyboard::RShift) // RShift
+				else if (Event.key.code == sf::Keyboard::RShift) // RShift
 				{
 					keyShiftDown = false;
 				}
@@ -154,15 +162,33 @@ int main()
 						{
 							Node* n = new Node(Event.mouseButton.x, Event.mouseButton.y);
 							nodes.insert(n);
-							qt.insert(n, Event.mouseButton.x, Event.mouseButton.y);
-							//for (size_t i = 0; i < selection.size(); ++i)
-								//selection[i]->deselect();
-							//selection.clear();
+							qt.insert(n, Event.mouseButton.x, Event.mouseButton.y);;
 							selection.clearSelection();
 							selection.push_back(n);
 							selection.updateSelectionBounds(n);
 							n->select();
-							mouseClickingSelection = true;
+							mouseDownOnSelection = true;
+						}
+					}
+					else if (keyAltDown) // Alt
+					{
+						// Check if mouse over nodes
+						std::vector<Node*> v;
+						if (qt.queryRegion(Event.mouseButton.x+selectRange, Event.mouseButton.y+selectRange, Event.mouseButton.x-selectRange, Event.mouseButton.y-selectRange, v))
+						{
+							// Check if there's a node that's selected
+							for (size_t i = 0; i < v.size(); ++i)
+							{
+								if (v[i]->isSelected())
+								{
+									// Remove single node from selection
+									v[i]->deselect();
+									Selection::iterator it = std::find(selection.begin(), selection.end(), v[i]);
+									selection.erase(it);
+									selection.resetSelectionBounds();
+									break;
+								}
+							}
 						}
 					}
 					else if (keyShiftDown) // Shift
@@ -180,7 +206,7 @@ int main()
 									selection.push_back(v[i]);
 									selection.updateSelectionBounds(v[i]);
 									v[i]->select();
-									mouseClickingSelection = true;
+									mouseDownOnSelection = true;
 									break;
 								}
 							}
@@ -199,30 +225,24 @@ int main()
 								if (v[i]->isSelected())
 								{
 									noneSelected = false;
-									mouseClickingSelection = true;
+									mouseDownOnSelection = true;
 									break;
 								}
 							}
 							if (noneSelected)
 							{
 								// Select single node
-								//for (size_t i = 0; i < selection.size(); ++i)
-									//selection[i]->deselect();
-								//selection.clear();
 								selection.clearSelection();
 								selection.push_back(v[0]);
 								selection.updateSelectionBounds(v[0]);
 								v[0]->select();
-								mouseClickingSelection = true;
+								mouseDownOnSelection = true;
 							}
 						}
 						else
 						{
 							// Clear selection
-							//for (size_t i = 0; i < selection.size(); ++i)
-							//	selection[i]->deselect();
-							//selection.clear();
-							selection.clearSelection();
+							//selection.clearSelection();
 						}
 					}
 				}
@@ -246,10 +266,38 @@ int main()
 				//
 				if (Event.mouseButton.button == sf::Mouse::Left)
 				{
-					if (keyShiftDown) // Shift
+					if (mouseDragSelecting)
 					{
-						if (mouseDragSelecting)
+						if (keyAltDown) // Alt
 						{
+							// Remove all from selection (that are selected)
+							std::vector<Node*> v;
+							qt.queryRegion(dragx1, dragy1, dragx2, dragy2, v);
+							std::set<Node*> s(v.begin(), v.end());
+							bool erasedSomething = false;
+							Selection::iterator it = selection.begin();
+							while (it != selection.end())
+							{
+								if (s.find(*it) != s.end())
+								{
+									(*it)->deselect();
+									it = selection.erase(it);
+									erasedSomething = true;
+								}
+								else
+								{
+									++it;
+								}
+							}
+							if (erasedSomething) selection.resetSelectionBounds();
+						}
+						else
+						{
+							if (!keyShiftDown) // ! Shift
+							{
+								// Making new selection
+								selection.clearSelection();
+							}
 							// Add all to selection (that aren't already selected)
 							std::vector<Node*> v;
 							qt.queryRegion(dragx1, dragy1, dragx2, dragy2, v);
@@ -264,11 +312,16 @@ int main()
 							}
 						}
 					}
+					else if (!mouseDownOnSelection && !mouseDragMoving && !keyAltDown && !keyShiftDown && !keyCtrlDown)
+					{
+						// Clear selection
+						selection.clearSelection();
+					}
 
 					mouseLeftDown = false;
 					mouseDragMoving = false;
 					mouseDragSelecting = false;
-					mouseClickingSelection = false;
+					mouseDownOnSelection = false;
 				}
 
 				//
@@ -294,18 +347,13 @@ int main()
 				//
 				if (mouseLeftDown)
 				{
-					if (keyShiftDown) // Shift
+					if (keyAltDown || keyShiftDown || selection.empty())
 					{
 						mouseDragSelecting = true;
 					}
-					else if (mouseClickingSelection)
+					else if (!selection.empty())
 					{
-						//for (size_t i = 0; i < selection.size(); ++i)
-						//{
-						//	qt.erase(selection[i], selection[i]->x, selection[i]->y);
-						//	selection[i]->move(dragx2-prevx, dragy2-prevy);
-						//	qt.insert(selection[i], selection[i]->x, selection[i]->y);
-						//}
+						mouseDragMoving = true;
 						for (size_t i = 0; i < selection.size(); ++i)
 							qt.erase(selection[i], selection[i]->x, selection[i]->y);
 						selection.moveSelection(dragx2-prevx, dragy2-prevy);
@@ -347,9 +395,9 @@ int main()
 		//std::cout << std::endl;
 
 		// Draw graph
-		for (std::set<Node*>::iterator itr = nodes.begin(); itr != nodes.end(); ++itr)
+		for (std::set<Node*>::iterator it = nodes.begin(); it != nodes.end(); ++it)
 		{
-			App.draw((*itr)->circ);
+			App.draw((*it)->circ);
 		}
 
 		// Draw drag select

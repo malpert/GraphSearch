@@ -49,14 +49,6 @@ public:
 		}
 	}
 
-	void moveSelectionBounds(float x, float y)
-	{
-		xmin += x;
-		ymin += y;
-		xmax += x;
-		ymax += y;
-	}
-
 	void resetSelectionBounds()
 	{
 		if (empty()) return;
@@ -71,6 +63,14 @@ public:
 			if ((*i)->x > xmax) xmax = (*i)->x;
 			if ((*i)->y > ymax) ymax = (*i)->y;
 		}
+	}
+
+	void moveSelectionBounds(float x, float y)
+	{
+		xmin += x;
+		ymin += y;
+		xmax += x;
+		ymax += y;
 	}
 
 private:
