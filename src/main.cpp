@@ -6,6 +6,7 @@
 #include <algorithm>
 
 #include "node.h"
+#include "edge.h"
 #include "selection.h"
 #include "quadtree.h"
 
@@ -39,13 +40,14 @@ int main()
 	// Graph
 	//
 	std::set<Node*> nodes;
-	QuadTree<Node*,4> qt(0, 0, (float)App.getSize().x, (float)App.getSize().y);
+	QuadTree<Node*,4> qtn(0, 0, (float)App.getSize().x, (float)App.getSize().y);
+	std::set<EdgePtr> edges;
+	QuadTree<EdgePtr,4> qte(0, 0, (float)App.getSize().x, (float)App.getSize().y);
+	Edge edge;
 
 	//
 	// Selection
 	//
-	//std::vector<Node*> selection;
-	int selectRange = 6;
 	Selection selection(6, 0, 0, App.getSize().x, App.getSize().y);
 
 	//
@@ -113,7 +115,7 @@ int main()
 					// Delete selected nodes
 					for (size_t i = 0; i < selection.size(); ++i)
 					{
-						qt.erase(selection[i], selection[i]->x, selection[i]->y);
+						qtn.erase(selection[i], selection[i]->x, selection[i]->y);
 						nodes.erase(selection[i]);
 						delete selection[i];
 					}
@@ -157,11 +159,21 @@ int main()
 					if (keyCtrlDown) // Ctrl
 					{
 						// Place node
-						if (qt.contains(Event.mouseButton.x, Event.mouseButton.y))
+						if (qtn.contains(Event.mouseButton.x, Event.mouseButton.y))
 						{
 							Node* n = new Node(Event.mouseButton.x, Event.mouseButton.y);
 							nodes.insert(n);
-							qt.insert(n, Event.mouseButton.x, Event.mouseButton.y);;
+							qtn.insert(n, Event.mouseButton.x, Event.mouseButton.y);
+							// Add edges
+							for (size_t i = 0; i < selection.size(); ++i)
+							{
+								EdgePtr e(new Edge(n, selection[i]));
+								e->update();
+								edges.insert(e);
+								qte.insert(e, e->srect.getPosition().x, e->srect.getPosition().y);
+								// Check for duplicate edges
+							}
+							// Update selection
 							selection.clearSelection();
 							selection.push_back(n);
 							selection.updateSelectionBounds(n);
@@ -173,7 +185,7 @@ int main()
 					{
 						// Check if mouse over nodes
 						std::vector<Node*> v;
-						if (qt.queryRegion(Event.mouseButton.x+selectRange, Event.mouseButton.y+selectRange, Event.mouseButton.x-selectRange, Event.mouseButton.y-selectRange, v))
+						if (qtn.queryRegion(Event.mouseButton.x+selection.getRange(), Event.mouseButton.y+selection.getRange(), Event.mouseButton.x-selection.getRange(), Event.mouseButton.y-selection.getRange(), v))
 						{
 							// Check if there's a node that's not selected
 							for (size_t i = 0; i < v.size(); ++i)
@@ -194,7 +206,7 @@ int main()
 					{
 						// Check if mouse over nodes
 						std::vector<Node*> v;
-						if (qt.queryRegion(Event.mouseButton.x+selectRange, Event.mouseButton.y+selectRange, Event.mouseButton.x-selectRange, Event.mouseButton.y-selectRange, v))
+						if (qtn.queryRegion(Event.mouseButton.x+selection.getRange(), Event.mouseButton.y+selection.getRange(), Event.mouseButton.x-selection.getRange(), Event.mouseButton.y-selection.getRange(), v))
 						{
 							// Check if there's a node that's selected
 							for (size_t i = 0; i < v.size(); ++i)
@@ -215,7 +227,7 @@ int main()
 					{
 						// Check if mouse over nodes
 						std::vector<Node*> v;
-						if (qt.queryRegion(Event.mouseButton.x+selectRange, Event.mouseButton.y+selectRange, Event.mouseButton.x-selectRange, Event.mouseButton.y-selectRange, v))
+						if (qtn.queryRegion(Event.mouseButton.x+selection.getRange(), Event.mouseButton.y+selection.getRange(), Event.mouseButton.x-selection.getRange(), Event.mouseButton.y-selection.getRange(), v))
 						{
 							// Check if all nodes not selected
 							bool noneSelected = true;
@@ -271,7 +283,7 @@ int main()
 						{
 							// Remove all from selection (that are selected)
 							std::vector<Node*> v;
-							qt.queryRegion(dragx1, dragy1, dragx2, dragy2, v);
+							qtn.queryRegion(dragx1, dragy1, dragx2, dragy2, v);
 							std::set<Node*> s(v.begin(), v.end());
 							bool erasedSomething = false;
 							Selection::iterator it = selection.begin();
@@ -299,7 +311,7 @@ int main()
 							}
 							// Add all to selection (that aren't already selected)
 							std::vector<Node*> v;
-							qt.queryRegion(dragx1, dragy1, dragx2, dragy2, v);
+							qtn.queryRegion(dragx1, dragy1, dragx2, dragy2, v);
 							for (size_t i = 0; i < v.size(); ++i)
 							{
 								if (!v[i]->isSelected())
@@ -349,10 +361,10 @@ int main()
 					{
 						mouseDragMoving = true;
 						for (size_t i = 0; i < selection.size(); ++i)
-							qt.erase(selection[i], selection[i]->x, selection[i]->y);
+							qtn.erase(selection[i], selection[i]->x, selection[i]->y);
 						selection.moveSelection(dragx2-prevx, dragy2-prevy);
 						for (size_t i = 0; i < selection.size(); ++i)
-							qt.insert(selection[i], selection[i]->x, selection[i]->y);
+							qtn.insert(selection[i], selection[i]->x, selection[i]->y);
 					}
 				}
 
@@ -380,15 +392,17 @@ int main()
 		//for (size_t i = 0; i < lines.size(); ++i) App.draw(*(lines[i]));
 
 		// Draw QuadTree
-		qt.draw(App);
-		//std::cout << qt.numCells() << "  " << qt.numItems() << std::endl;
-		//std::vector<int> v;
-		//qt.getAllItems(v);
-		//for (size_t i = 0; i < v.size(); ++i)
-		//	std::cout << v[i] << ' ';
-		//std::cout << std::endl;
+		qtn.draw(App);
 
-		// Draw graph
+		// Draw edges
+		for (std::set<EdgePtr>::iterator it = edges.begin(); it != edges.end(); ++it)
+		{
+			it->p->update();
+			App.draw(it->p->rect);
+			App.draw(it->p->srect);
+		}
+
+		// Draw nodes
 		for (std::set<Node*>::iterator it = nodes.begin(); it != nodes.end(); ++it)
 		{
 			App.draw((*it)->circ);

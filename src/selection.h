@@ -8,10 +8,10 @@ class Selection : public std::vector<Node*>
 public:
 
 	Selection(int selectionRange, int globalXMin, int globalYMin, int globalXMax, int globalYMax)
-		: range(range), gxmin((float)globalXMin), gymin((float)globalYMin), gxmax((float)globalXMax), gymax((float)globalYMax), xmin(0), ymin(0), xmax(0), ymax(0) {}
+		: range(selectionRange), gxmin((float)globalXMin), gymin((float)globalYMin), gxmax((float)globalXMax), gymax((float)globalYMax), xmin(0), ymin(0), xmax(0), ymax(0) {}
 
 	Selection(int selectionRange, float globalXMin, float globalYMin, float globalXMax, float globalYMax)
-		: range(range), gxmin(globalXMin), gymin(globalYMin), gxmax(globalXMax), gymax(globalYMax), xmin(0), ymin(0), xmax(0), ymax(0) {}
+		: range(selectionRange), gxmin(globalXMin), gymin(globalYMin), gxmax(globalXMax), gymax(globalYMax), xmin(0), ymin(0), xmax(0), ymax(0) {}
 
 	void clearSelection()
 	{
@@ -71,6 +71,11 @@ public:
 		ymin += y;
 		xmax += x;
 		ymax += y;
+	}
+
+	int getRange()
+	{
+		return range;
 	}
 
 private:

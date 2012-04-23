@@ -4,6 +4,9 @@
 #include <set>
 #include <iostream>
 
+class Edge;
+class EdgePtr;
+
 class Node
 {
 public:
@@ -17,6 +20,15 @@ public:
 		init();
 	}
 
+	~Node()
+	{
+		for (size_t i = 0; i < edges.size(); ++i)
+		{
+			//edges[i]->update();
+			//edges[i]->n1;
+		}
+	}
+
 	void init()
 	{
 		circ.setRadius(5);
@@ -26,20 +38,20 @@ public:
 		circ.setOutlineThickness(0);
 	}
 	
-	bool addNeighbor(Node * n)
-	{
-		return neighbors.insert(n).second;
-	}
-	
-	bool eraseNeighbor(Node * n)
-	{
-		if (neighbors.find(n) != neighbors.end())
-		{
-			neighbors.erase(n);
-			return true;
-		}
-		return false;
-	}
+	//bool addNeighbor(Node * n)
+	//{
+	//	return neighbors.insert(n).second;
+	//}
+	//
+	//bool eraseNeighbor(Node * n)
+	//{
+	//	if (neighbors.find(n) != neighbors.end())
+	//	{
+	//		neighbors.erase(n);
+	//		return true;
+	//	}
+	//	return false;
+	//}
 
 	void select()
 	{
@@ -89,6 +101,7 @@ public:
 	float x;
 	float y;
 	bool selected;
-	std::set<Node*> neighbors;
+	std::vector<EdgePtr> edges;
+	std::vector<Node*> neighbors;
 	sf::CircleShape circ;
 };
