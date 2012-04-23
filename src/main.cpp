@@ -41,9 +41,8 @@ int main()
 	//
 	std::set<Node*> nodes;
 	QuadTree<Node*,4> qtn(0, 0, (float)App.getSize().x, (float)App.getSize().y);
-	std::set<EdgePtr> edges;
-	QuadTree<EdgePtr,4> qte(0, 0, (float)App.getSize().x, (float)App.getSize().y);
-	Edge edge;
+	std::set<Edge*> edges;
+	QuadTree<Edge*,4> qte(0, 0, (float)App.getSize().x, (float)App.getSize().y);
 
 	//
 	// Selection
@@ -112,12 +111,28 @@ int main()
 				}
 				else if (Event.key.code == sf::Keyboard::Delete) // Delete
 				{
-					// Delete selected nodes
-					for (size_t i = 0; i < selection.size(); ++i)
+					// Delete selected nodes and their edges
+					for (Selection::iterator it = selection.begin(); it != selection.end(); ++it)
 					{
-						qtn.erase(selection[i], selection[i]->x, selection[i]->y);
-						nodes.erase(selection[i]);
-						delete selection[i];
+						Node * n = *it; 
+						nodes.erase(n); // erase node from nodes list
+						qtn.erase(n, n->x, n->y); // erase node from node quadtree
+						for (std::set<Edge*>::iterator jt = n->edges.begin(); jt != n->edges.end(); ++jt)
+						{
+							Edge * e = *jt;
+							edges.erase(e); // erase edge from edge list
+							qte.erase(e, e->srect.getPosition().x, e->srect.getPosition().y); // erase edge from edge quadtree
+
+							// Edge has two nodes. Current node is one of them (we are iterating through current node's edge list).
+							// We are about to delete current node, so there is no need to remove edge from current node's edge list,
+							// especially since we are currently iterating through it!
+							if (e->n1 == n) // So, if n1 is current node, erase edge from n2
+								e->n2->edges.erase(e);
+							else // Else erase edge from n1
+								e->n1->edges.erase(e);
+							delete e;
+						}
+						delete n;
 					}
 					selection.clear();
 				}
@@ -167,14 +182,16 @@ int main()
 							// Add edges
 							for (size_t i = 0; i < selection.size(); ++i)
 							{
-								EdgePtr e(new Edge(n, selection[i]));
+								Edge* e = new Edge(n, selection[i]);
 								e->update();
 								edges.insert(e);
 								qte.insert(e, e->srect.getPosition().x, e->srect.getPosition().y);
+								n->edges.insert(e);
+								selection[i]->edges.insert(e);
 								// Check for duplicate edges
 							}
 							// Update selection
-							selection.clearSelection();
+							if (!keyShiftDown) selection.clearSelection();
 							selection.push_back(n);
 							selection.updateSelectionBounds(n);
 							n->select();
@@ -360,11 +377,48 @@ int main()
 					else if (mouseDownOnSelection)
 					{
 						mouseDragMoving = true;
-						for (size_t i = 0; i < selection.size(); ++i)
-							qtn.erase(selection[i], selection[i]->x, selection[i]->y);
-						selection.moveSelection(dragx2-prevx, dragy2-prevy);
-						for (size_t i = 0; i < selection.size(); ++i)
-							qtn.insert(selection[i], selection[i]->x, selection[i]->y);
+						
+						std::set<Edge*> erased; // avoid erasing/inserting duplicates
+
+						for (Selection::iterator it = selection.begin(); it != selection.end(); ++it)
+						{
+							Node * n = *it;
+							qtn.erase(n, n->x, n->y);
+							for (std::set<Edge*>::iterator jt = n->edges.begin(); jt != n->edges.end(); ++jt)
+							{
+								Edge * e = *jt;
+								// if not in erased list
+								if (erased.find(e) == erased.end())
+								{
+									// erase
+									qte.erase(e, e->srect.getPosition().x, e->srect.getPosition().y);
+									// add to erased list
+									erased.insert(e);
+									//std::cout << qte.numItems() << std::endl;
+								}
+							}
+						}
+
+						selection.moveSelection(dragx2-prevx, dragy2-prevy); // updates edges as well
+
+						for (Selection::iterator it = selection.begin(); it != selection.end(); ++it)
+						{
+							Node * n = *it;
+							qtn.insert(n, n->x, n->y);
+							for (std::set<Edge*>::iterator jt = n->edges.begin(); jt != n->edges.end(); ++jt)
+							{
+								Edge * e = *jt;
+								// if in erased list
+								if (erased.find(e) != erased.end())
+								{
+									// insert
+									qte.insert(e, e->srect.getPosition().x, e->srect.getPosition().y);
+									// remove from erased list
+									erased.erase(e);
+									//std::cout << qte.numItems() << std::endl;
+								}
+							}
+						}
 					}
 				}
 
@@ -392,20 +446,22 @@ int main()
 		//for (size_t i = 0; i < lines.size(); ++i) App.draw(*(lines[i]));
 
 		// Draw QuadTree
-		qtn.draw(App);
+		//qtn.draw(App);
+		qte.draw(App);
 
 		// Draw edges
-		for (std::set<EdgePtr>::iterator it = edges.begin(); it != edges.end(); ++it)
+		for (std::set<Edge*>::iterator it = edges.begin(); it != edges.end(); ++it)
 		{
-			it->p->update();
-			App.draw(it->p->rect);
-			App.draw(it->p->srect);
+			//(*it)->update();
+			App.draw((*it)->rect);
+			App.draw((*it)->srect);
 		}
 
 		// Draw nodes
 		for (std::set<Node*>::iterator it = nodes.begin(); it != nodes.end(); ++it)
 		{
 			App.draw((*it)->circ);
+			//std::cout << "size=" << (*it)->edges.size() << std::endl;
 		}
 
 		// Draw drag select
@@ -418,6 +474,8 @@ int main()
 			rect.setOutlineColor(sf::Color::Black);
 			App.draw(rect);
 		}
+
+		//std::cout << nodes.size() << ' ' << qtn.numItems() << ' ' << edges.size() << ' ' << qte.numItems() << std::endl;
 
 		// Update the window
 		App.display();

@@ -62,10 +62,13 @@ public:
 class EdgePtr
 {
 public:
-	EdgePtr(Edge * p) : p(p) {}
+	EdgePtr(Edge * p = 0) : p(p) {}
+	EdgePtr& operator=(const EdgePtr & rhs) { p = rhs.p; return *this; }
+	EdgePtr& operator=(Edge * rhs) { p = rhs; return *this; }
 	Edge* operator->() { return p; }
 	Edge& operator*() { return *p; }
-	operator Edge*() { return p; } // Compare EdgePtr with Edge*
+	operator Edge*() { return p; } // Allows Edge* == EdgePtr
+	bool operator==(Edge * rhs) const { return p == rhs; } // Allows EdgePtr == Edge*
 	bool operator==(const EdgePtr & rhs) const
 	{
 		return rhs.p->n1 == p->n1 && rhs.p->n2 == p->n2;
