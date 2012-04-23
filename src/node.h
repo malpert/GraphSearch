@@ -26,7 +26,8 @@ public:
 	float x;
 	float y;
 	bool selected;
-	std::vector<EdgePtr> edges;
+	//std::vector<EdgePtr> edges;
+	std::set<Edge*> edges;
 	std::vector<Node*> neighbors;
 	sf::CircleShape circ;
 };
