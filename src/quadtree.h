@@ -13,6 +13,7 @@
 
 #include <assert.h>
 #include <vector>
+#include <set>
 #include <algorithm>
 #include <math.h>
 
@@ -21,7 +22,7 @@
 #include <SFML/Graphics.hpp>
 #endif
 
-template<typename T, int MAX_ITEMS_PER_CELL=6, int MAX_DEPTH=10>
+template<typename T>
 class QuadTree
 {
 private:
@@ -75,8 +76,8 @@ public:
 	//
 	// Constructs a QuadTree cell based on the given lower and upper bounds.
 	//
-	QuadTree(float x1, float y1, float x2, float y2, int depth = 0)
-		: depth(depth), hasChildren(0), c1(0), c2(0), c3(0), c4(0)
+	QuadTree(float x1, float y1, float x2, float y2, int MAX_ITEMS_PER_CELL=6, int MAX_DEPTH=10, int depth = 0)
+		: MAX_ITEMS_PER_CELL(MAX_ITEMS_PER_CELL), MAX_DEPTH(MAX_DEPTH), depth(depth), hasChildren(0), c1(0), c2(0), c3(0), c4(0)
 	{
 		aabb.hw = std::fabs(x1-x2) / 2;
 		aabb.hh = std::fabs(y1-y2) / 2;
@@ -108,7 +109,7 @@ public:
 
 		if (!hasChildren)
 		{
-			if (depth >= MAX_DEPTH || items.size() < MAX_ITEMS_PER_CELL)
+			if (depth >= MAX_DEPTH || items.size() < (size_t)MAX_ITEMS_PER_CELL)
 				items.push_back(Item(data, x, y));
 			else
 				subdivide();
@@ -287,7 +288,7 @@ public:
 		rect.setPosition(aabb.cx-aabb.hw, aabb.cy-aabb.hh);
 		rect.setFillColor(sf::Color::Transparent);
 		rect.setOutlineThickness(1);
-		rect.setOutlineColor(sf::Color::Black);
+		rect.setOutlineColor(sf::Color(192, 192, 192));
 		rw.draw(rect);
 		if (hasChildren)
 		{
@@ -502,10 +503,10 @@ private:
 
 	void subdivide()
 	{
-		c1 = new QuadTree(aabb.cx, aabb.cy, aabb.cx+aabb.hw, aabb.cy+aabb.hh, depth+1); // x+ y+
-		c2 = new QuadTree(aabb.cx, aabb.cy, aabb.cx+aabb.hw, aabb.cy-aabb.hh, depth+1); // x+ y-
-		c3 = new QuadTree(aabb.cx, aabb.cy, aabb.cx-aabb.hw, aabb.cy+aabb.hh, depth+1); // x- y+
-		c4 = new QuadTree(aabb.cx, aabb.cy, aabb.cx-aabb.hw, aabb.cy-aabb.hh, depth+1); // x- y-
+		c1 = new QuadTree(aabb.cx, aabb.cy, aabb.cx+aabb.hw, aabb.cy+aabb.hh, MAX_ITEMS_PER_CELL, MAX_DEPTH, depth+1); // x+ y+
+		c2 = new QuadTree(aabb.cx, aabb.cy, aabb.cx+aabb.hw, aabb.cy-aabb.hh, MAX_ITEMS_PER_CELL, MAX_DEPTH, depth+1); // x+ y-
+		c3 = new QuadTree(aabb.cx, aabb.cy, aabb.cx-aabb.hw, aabb.cy+aabb.hh, MAX_ITEMS_PER_CELL, MAX_DEPTH, depth+1); // x- y+
+		c4 = new QuadTree(aabb.cx, aabb.cy, aabb.cx-aabb.hw, aabb.cy-aabb.hh, MAX_ITEMS_PER_CELL, MAX_DEPTH, depth+1); // x- y-
 
 		for (size_t i = 0; i < items.size(); ++i)
 		{
@@ -544,6 +545,8 @@ private:
 	}
 
 	AABB aabb;
+	const int MAX_ITEMS_PER_CELL;
+	const int MAX_DEPTH;
 	int depth;
 	bool hasChildren;
 	QuadTree * c1; // x+ y+

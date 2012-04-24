@@ -40,9 +40,14 @@ int main()
 	// Graph
 	//
 	std::set<Node*> nodes;
-	QuadTree<Node*,4> qtn(0, 0, (float)App.getSize().x, (float)App.getSize().y);
+	QuadTree<Node*> qtn(0, 0, (float)App.getSize().x, (float)App.getSize().y, 4);
+	Node::setNodeSet(&nodes);
+	Node::setQuadTree(&qtn);
+
 	std::set<Edge*> edges;
-	QuadTree<Edge*,4> qte(0, 0, (float)App.getSize().x, (float)App.getSize().y);
+	QuadTree<Edge*> qte(0, 0, (float)App.getSize().x, (float)App.getSize().y, 4);
+	Edge::setEdgeSet(&edges);
+	Edge::setQuadTree(&qte);
 
 	//
 	// Selection
@@ -97,10 +102,6 @@ int main()
                     sf::Image Screen = App.capture();
                     Screen.saveToFile("../media/screenshot.jpg");
                 }
-				else if (Event.key.code == sf::Keyboard::RAlt) // RAlt
-				{
-					keyAltDown = true;
-				}
 				else if (Event.key.code == sf::Keyboard::RControl) // RControl
 				{
 					keyCtrlDown = true;
@@ -108,33 +109,50 @@ int main()
 				else if (Event.key.code == sf::Keyboard::RShift) // RShift
 				{
 					keyShiftDown = true;
+					//if (mouseDragMoving && !justCreatedNode)
+					//{
+					//	mouseDragMoving = false;
+					//	mouseDownOnSelection = false;
+					//	mouseDragReset = true;
+					//}
+				}
+				else if (Event.key.code == sf::Keyboard::RAlt) // RAlt
+				{
+					keyAltDown = true;
+					//if (mouseDragMoving)
+					//{
+					//	mouseDragMoving = false;
+					//	mouseDownOnSelection = false;
+					//	mouseDragReset = true;
+					//}
 				}
 				else if (Event.key.code == sf::Keyboard::Delete) // Delete
 				{
 					// Delete selected nodes and their edges
 					for (Selection::iterator it = selection.begin(); it != selection.end(); ++it)
 					{
-						Node * n = *it; 
-						nodes.erase(n); // erase node from nodes list
-						qtn.erase(n, n->x, n->y); // erase node from node quadtree
-						for (std::set<Edge*>::iterator jt = n->edges.begin(); jt != n->edges.end(); ++jt)
-						{
-							Edge * e = *jt;
-							edges.erase(e); // erase edge from edge list
-							qte.erase(e, e->srect.getPosition().x, e->srect.getPosition().y); // erase edge from edge quadtree
-
-							// Edge has two nodes. Current node is one of them (we are iterating through current node's edge list).
-							// We are about to delete current node, so there is no need to remove edge from current node's edge list,
-							// especially since we are currently iterating through it!
-							if (e->n1 == n) // So, if n1 is current node, erase edge from n2
-								e->n2->edges.erase(e);
-							else // Else erase edge from n1
-								e->n1->edges.erase(e);
-							delete e;
-						}
-						delete n;
+						// Node destructor will remove node from node set and quadtree
+						// and will delete its edges. Edge destructor will remove edge
+						// from its nodes, the edge set, and quadtree.
+						delete *it;
 					}
 					selection.clear();
+				}
+				else if (Event.key.code == sf::Keyboard::Insert) // Insert
+				{
+					// Toggle edge on a pair of selected nodes
+					if (selection.size() == 2)
+					{
+						Selection::iterator i1 = selection.begin(), i2 = selection.begin();
+						++i2;
+						// Factory creates edge only of nodes are not already neighbors.
+						// Edges add themselves to edge set, quadtree and its nodes' edge sets.
+						if (!Edge::createEdge(*i1, *i2))
+						{
+							// Edge already exists, so remove it instead
+							Edge::destroyEdge(*i1, *i2);
+						}
+					}
 				}
 			}
 
@@ -143,17 +161,19 @@ int main()
 			//
 			if (Event.type == sf::Event::KeyReleased)
 			{
-				if (Event.key.code == sf::Keyboard::RAlt) // RAlt
-				{
-					keyAltDown = false;
-				}
-				else if (Event.key.code == sf::Keyboard::RControl) // RControl
+				if (Event.key.code == sf::Keyboard::RControl) // RControl
 				{
 					keyCtrlDown = false;
 				}
 				else if (Event.key.code == sf::Keyboard::RShift) // RShift
 				{
 					keyShiftDown = false;
+					//if (!justCreatedNode) mouseDownOnSelection = false;
+				}
+				else if (Event.key.code == sf::Keyboard::RAlt) // RAlt
+				{
+					keyAltDown = false;
+					//if (!justCreatedNode) mouseDownOnSelection = false;
 				}
 			}
 
@@ -173,29 +193,51 @@ int main()
 
 					if (keyCtrlDown) // Ctrl
 					{
-						// Place node
-						if (qtn.contains(Event.mouseButton.x, Event.mouseButton.y))
+						// Check if mouse over node
+						std::vector<Node*> v;
+						if (qtn.queryRegion(Event.mouseButton.x+selection.getRange(), Event.mouseButton.y+selection.getRange(), Event.mouseButton.x-selection.getRange(), Event.mouseButton.y-selection.getRange(), v))
 						{
-							Node* n = new Node(Event.mouseButton.x, Event.mouseButton.y);
-							nodes.insert(n);
-							qtn.insert(n, Event.mouseButton.x, Event.mouseButton.y);
-							// Add edges
+							Node * n = v[0];
+							// Add edge between clicked node and all selected nodes
 							for (size_t i = 0; i < selection.size(); ++i)
-							{
-								Edge* e = new Edge(n, selection[i]);
-								e->update();
-								edges.insert(e);
-								qte.insert(e, e->srect.getPosition().x, e->srect.getPosition().y);
-								n->edges.insert(e);
-								selection[i]->edges.insert(e);
-								// Check for duplicate edges
-							}
+								Edge::createEdge(n, selection[i]);
 							// Update selection
 							if (!keyShiftDown) selection.clearSelection();
-							selection.push_back(n);
-							selection.updateSelectionBounds(n);
-							n->select();
+							bool found = false;
+							for (size_t i = 0; i < selection.size(); ++i)
+							{
+								if (selection[i] == n) found = true;
+							}
+							if (!found)
+							{
+								selection.push_back(n);
+								selection.updateSelectionBounds(n);
+								n->select();
+							}
 							mouseDownOnSelection = true;
+						}
+						else
+						{
+							// Place node
+							if (qtn.contains(Event.mouseButton.x, Event.mouseButton.y))
+							{
+								// Nodes add themselves to node set and quadtree
+								Node * n = new Node(Event.mouseButton.x, Event.mouseButton.y);
+								if (keyAltDown) selection.clearSelection();
+								// Add edge between new node and all selected nodes
+								for (size_t i = 0; i < selection.size(); ++i)
+								{
+									// Factory creates edge only of nodes are not already neighbors.
+									// Edges add themselves to edge set, quadtree and its nodes' edge sets.
+									Edge::createEdge(n, selection[i]);
+								}
+								// Update selection
+								if (!keyShiftDown) selection.clearSelection();
+								selection.push_back(n);
+								selection.updateSelectionBounds(n);
+								n->select();
+								mouseDownOnSelection = true;
+							}
 						}
 					}
 					else if (keyShiftDown) // Shift
@@ -364,61 +406,20 @@ int main()
 			{
 				dragx2 = Event.mouseMove.x;
 				dragy2 = Event.mouseMove.y;
-
+				 
 				//
 				// Left
 				//
 				if (mouseLeftDown)
 				{
-					if (!mouseDownOnSelection || keyShiftDown || keyAltDown)
-					{
-						mouseDragSelecting = true;
-					}
-					else if (mouseDownOnSelection)
+					if (mouseDownOnSelection)
 					{
 						mouseDragMoving = true;
-						
-						std::set<Edge*> erased; // avoid erasing/inserting duplicates
-
-						for (Selection::iterator it = selection.begin(); it != selection.end(); ++it)
-						{
-							Node * n = *it;
-							qtn.erase(n, n->x, n->y);
-							for (std::set<Edge*>::iterator jt = n->edges.begin(); jt != n->edges.end(); ++jt)
-							{
-								Edge * e = *jt;
-								// if not in erased list
-								if (erased.find(e) == erased.end())
-								{
-									// erase
-									qte.erase(e, e->srect.getPosition().x, e->srect.getPosition().y);
-									// add to erased list
-									erased.insert(e);
-									//std::cout << qte.numItems() << std::endl;
-								}
-							}
-						}
-
-						selection.moveSelection(dragx2-prevx, dragy2-prevy); // updates edges as well
-
-						for (Selection::iterator it = selection.begin(); it != selection.end(); ++it)
-						{
-							Node * n = *it;
-							qtn.insert(n, n->x, n->y);
-							for (std::set<Edge*>::iterator jt = n->edges.begin(); jt != n->edges.end(); ++jt)
-							{
-								Edge * e = *jt;
-								// if in erased list
-								if (erased.find(e) != erased.end())
-								{
-									// insert
-									qte.insert(e, e->srect.getPosition().x, e->srect.getPosition().y);
-									// remove from erased list
-									erased.erase(e);
-									//std::cout << qte.numItems() << std::endl;
-								}
-							}
-						}
+						selection.moveSelection(dragx2-prevx, dragy2-prevy);
+					}
+					else //if (keyShiftDown || keyAltDown)
+					{
+						mouseDragSelecting = true;
 					}
 				}
 
@@ -446,13 +447,12 @@ int main()
 		//for (size_t i = 0; i < lines.size(); ++i) App.draw(*(lines[i]));
 
 		// Draw QuadTree
-		//qtn.draw(App);
-		qte.draw(App);
+		qtn.draw(App);
+		//qte.draw(App);
 
 		// Draw edges
 		for (std::set<Edge*>::iterator it = edges.begin(); it != edges.end(); ++it)
 		{
-			//(*it)->update();
 			App.draw((*it)->rect);
 			App.draw((*it)->srect);
 		}
@@ -461,7 +461,7 @@ int main()
 		for (std::set<Node*>::iterator it = nodes.begin(); it != nodes.end(); ++it)
 		{
 			App.draw((*it)->circ);
-			//std::cout << "size=" << (*it)->edges.size() << std::endl;
+			std::cout << "n=" << (*it)->neighbors.size() << " e=" << (*it)->edges.size() << std::endl;
 		}
 
 		// Draw drag select
@@ -475,7 +475,7 @@ int main()
 			App.draw(rect);
 		}
 
-		//std::cout << nodes.size() << ' ' << qtn.numItems() << ' ' << edges.size() << ' ' << qte.numItems() << std::endl;
+		std::cout << "n=" << nodes.size() << " qn=" << qtn.numItems() << " e=" << edges.size() << " qe=" << qte.numItems() << std::endl;
 
 		// Update the window
 		App.display();

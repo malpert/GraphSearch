@@ -28,15 +28,8 @@ public:
 	void moveSelection(float x, float y)
 	{
 		if (empty() || xmin+x <= gxmin || ymin+y <= gymin || xmax+x >= gxmax || ymax+y >= gymax) return;
-
 		for (size_t i = 0; i < size(); ++i)
-		{
 			(*this)[i]->move(x, y);
-			for (std::set<Edge*>::iterator jt = (*this)[i]->edges.begin(); jt != (*this)[i]->edges.end(); ++jt)
-			{
-				(*jt)->update();
-			}
-		}
 		moveSelectionBounds(x, y);
 	}
 
