@@ -15,7 +15,7 @@ int main()
 	//
     // Create the main rendering window
 	//
-    sf::RenderWindow App(sf::VideoMode(640, 640, 32), "Graph Search");
+    sf::RenderWindow App(sf::VideoMode(600, 600, 32), "Graph Search");
 
 	//
 	// Create lines
