@@ -84,18 +84,17 @@ void Node::move(int dx, int dy)
 }
 void Node::move(float dx, float dy)
 {
-	// Erase self from quadtree
-	if (qtree) qtree->erase(this, x, y);
+	// Move in quadtree
+	if (qtree) qtree->move(this, x, y, x+dx, y+dy);
 
 	// Move
 	x += dx;
 	y += dy;
 	circ.move(dx, dy);
+
+	// Update edges
 	for (std::set<Edge*>::iterator it = edges.begin(); it != edges.end(); ++it)
 		(*it)->update();
-
-	// Insert self into quadtree
-	if (qtree) qtree->insert(this, x, y);
 }
 
 std::ostream & operator<<(std::ostream & out, const Node & rhs)

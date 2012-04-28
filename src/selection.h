@@ -4,7 +4,7 @@
 #include "edge.h"
 #include <vector>
 
-class Selection : public std::vector<Node*>
+class Selection : public std::set<Node*>
 {
 public:
 
@@ -14,10 +14,47 @@ public:
 	Selection(int selectionRange, float globalXMin, float globalYMin, float globalXMax, float globalYMax)
 		: range(selectionRange), gxmin(globalXMin), gymin(globalYMin), gxmax(globalXMax), gymax(globalYMax), xmin(0), ymin(0), xmax(0), ymax(0) {}
 
+	int getRange()
+	{
+		return range;
+	}
+
+	void insertSelection(Node * n)
+	{
+		insert(n);
+		updateSelectionBounds(n);
+		n->select();
+	}
+
+	void insertSelection(std::vector<Node*> v)
+	{
+		for (std::vector<Node*>::iterator it = v.begin(); it != v.end(); ++it)
+		{
+			insertSelection(*it);
+		}
+	}
+
+	void eraseSelection(Node * n)
+	{
+		erase(n);
+		resetSelectionBounds();
+		n->deselect();
+	}
+
+	void eraseSelection(std::vector<Node*> v)
+	{
+		for (std::vector<Node*>::iterator it = v.begin(); it != v.end(); ++it)
+		{
+			erase(*it);
+			(*it)->deselect();
+		}
+		resetSelectionBounds();
+	}
+
 	void clearSelection()
 	{
-		for (size_t i = 0; i < size(); ++i)
-			(*this)[i]->deselect();
+		for (Selection::iterator it = begin(); it != end(); ++it)
+			(*it)->deselect();
 		clear();
 	}
 
@@ -28,10 +65,12 @@ public:
 	void moveSelection(float x, float y)
 	{
 		if (empty() || xmin+x <= gxmin || ymin+y <= gymin || xmax+x >= gxmax || ymax+y >= gymax) return;
-		for (size_t i = 0; i < size(); ++i)
-			(*this)[i]->move(x, y);
+		for (Selection::iterator it = begin(); it != end(); ++it)
+			(*it)->move(x, y);
 		moveSelectionBounds(x, y);
 	}
+
+private:
 
 	void updateSelectionBounds(Node* n)
 	{
@@ -56,12 +95,12 @@ public:
 		xmin = xmax = (*begin())->x;
 		ymin = ymax = (*begin())->y;
 
-		for (std::vector<Node*>::iterator i = begin()+1; i != end(); ++i)
+		for (Selection::iterator it = begin(); it != end(); ++it)
 		{
-			if ((*i)->x < xmin) xmin = (*i)->x;
-			if ((*i)->y < ymin) ymin = (*i)->y;
-			if ((*i)->x > xmax) xmax = (*i)->x;
-			if ((*i)->y > ymax) ymax = (*i)->y;
+			if ((*it)->x < xmin) xmin = (*it)->x;
+			if ((*it)->y < ymin) ymin = (*it)->y;
+			if ((*it)->x > xmax) xmax = (*it)->x;
+			if ((*it)->y > ymax) ymax = (*it)->y;
 		}
 	}
 
@@ -71,11 +110,6 @@ public:
 		ymin += y;
 		xmax += x;
 		ymax += y;
-	}
-
-	int getRange()
-	{
-		return range;
 	}
 
 private:

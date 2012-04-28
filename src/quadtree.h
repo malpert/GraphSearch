@@ -225,6 +225,39 @@ public:
 	}
 
 	//
+	// move
+	//
+	// Moves the item from position 1 to position 2 within the quadtree.
+	//
+	bool move(T data, int x1, int y1, int x2, int y2)
+	{
+		return move(data, (float)x1, (float)y1, (float)x2, (float)y2);
+	}
+	bool move(T data, float x1, float y1, float x2, float y2)
+	{
+		QuadTree * qt = getCellContaining(x1, y1);
+		if (qt && qt->contains(x2, y2))
+		{
+			for (std::vector<Item>::iterator it = qt->items.begin(); it != qt->items.end(); ++it)
+			{
+				if (it->data == data)
+				{
+					it->x = x2;
+					it->y = y2;
+					return true;
+				}
+			}
+			
+		}
+		else
+		{
+			erase(data, x1, y1);
+			insert(data, x2, y2);
+		}
+		return false;
+	}
+
+	//
 	// contains
 	//
 	// Returns whether the given point is contained within this cell.
@@ -301,6 +334,23 @@ public:
 #endif
 
 private:
+
+	QuadTree * getCellContaining(float x, float y)
+	{
+		if (hasChildren)
+		{
+			if (c1->aabb.contains(x,y)) return c1->getCellContaining(x,y);
+			else if (c2->aabb.contains(x,y)) return c2->getCellContaining(x,y);
+			else if (c3->aabb.contains(x,y)) return c3->getCellContaining(x,y);
+			else if (c4->aabb.contains(x,y)) return c4->getCellContaining(x,y);
+			else return 0;
+		}
+		else
+		{
+			if (aabb.contains(x,y)) return this;
+			else return 0;
+		}
+	}
 
 	void getAllItemsWork(std::vector<T> & ret)
 	{

@@ -25,6 +25,9 @@ public:
 
 	void update();
 
+	void move(int dx, int dy);
+	void move(float dx, float dy);
+
 	bool operator==(const Edge & rhs) const;
 
 	bool operator==(const Edge * rhs) const;
@@ -33,6 +36,7 @@ public:
 	Node * n2;
 	float ht; // half-thickness
 	bool selected;
+	bool updateDisabled;
 	sf::RectangleShape rect;
 	sf::RectangleShape srect;
 
