@@ -135,7 +135,7 @@ int main()
 					}
 					selection.clear();
 				}
-				else if (Event.key.code == sf::Keyboard::Insert || Event.key.code == sf::Keyboard::E) // Insert or E
+				else if (Event.key.code == sf::Keyboard::Insert || Event.key.code == sf::Keyboard::BackSlash || Event.key.code == sf::Keyboard::E) // Insert, \ or E
 				{
 					// Toggle edge on a pair of selected nodes
 					if (selection.size() == 2)
@@ -200,15 +200,25 @@ int main()
 						std::vector<Node*> v;
 						if (qtn.queryRegion(Event.mouseButton.x+selection.getRange(), Event.mouseButton.y+selection.getRange(), Event.mouseButton.x-selection.getRange(), Event.mouseButton.y-selection.getRange(), v))
 						{
-							Node * n = v[0];
-							// Add edge between clicked node and all selected nodes
-							for (Selection::iterator it = selection.begin(); it != selection.end(); ++it)
-								Edge::createEdge(n, *it);
-							// If shift key not down, clear selection set
-							if (!keyShiftDown) selection.clearSelection();
-							// Add to selection
-							selection.insertSelection(n);
-							mouseDownOnSelection = true;
+							if (keyAltDown)
+							{
+								Node * n = v[0];
+								// Remove edges between clicked node and all selected nodes
+								for (Selection::iterator it = selection.begin(); it != selection.end(); ++it)
+									Edge::destroyEdge(n, *it);
+							}
+							else
+							{
+								Node * n = v[0];
+								// Add edge between clicked node and all selected nodes
+								for (Selection::iterator it = selection.begin(); it != selection.end(); ++it)
+									Edge::createEdge(n, *it);
+								// If shift key not down, clear selection set
+								if (!keyShiftDown) selection.clearSelection();
+								// Add to selection
+								selection.insertSelection(n);
+								mouseDownOnSelection = true;
+							}
 						}
 						else
 						{
@@ -251,6 +261,25 @@ int main()
 								}
 							}
 						}
+						else
+						{
+							// Check if mouse over edges
+							std::vector<Edge*> v;
+							if (qte.queryRegion(Event.mouseButton.x+selection.getRange(), Event.mouseButton.y+selection.getRange(), Event.mouseButton.x-selection.getRange(), Event.mouseButton.y-selection.getRange(), v))
+							{
+								// Check if there's an edge whose nodes are not both selected
+								for (size_t i = 0; i < v.size(); ++i)
+								{
+									if (!v[i]->n1->isSelected() || !v[i]->n2->isSelected())
+									{
+										// Add edge's nodes to selection
+										selection.insertSelection(v[i]->n1);
+										selection.insertSelection(v[i]->n2);
+										mouseDownOnSelection = true;
+									}
+								}
+							}
+						}
 					}
 					else if (keyAltDown) // Alt
 					{
@@ -266,6 +295,24 @@ int main()
 									// Remove single node from selection
 									selection.eraseSelection(v[i]);
 									break;
+								}
+							}
+						}
+						else
+						{
+							// Check if mouse over edges
+							std::vector<Edge*> v;
+							if (qte.queryRegion(Event.mouseButton.x+selection.getRange(), Event.mouseButton.y+selection.getRange(), Event.mouseButton.x-selection.getRange(), Event.mouseButton.y-selection.getRange(), v))
+							{
+								// Check if there's an edge with a selected node
+								for (size_t i = 0; i < v.size(); ++i)
+								{
+									if (v[i]->n1->isSelected() || v[i]->n2->isSelected())
+									{
+										// Remove edge's nodes from selection
+										selection.eraseSelection(v[i]->n1);
+										selection.eraseSelection(v[i]->n2);
+									}
 								}
 							}
 						}

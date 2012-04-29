@@ -34,8 +34,8 @@ void Edge::init()
 	srect.setFillColor(sf::Color::Black);
 	srect.setOutlineColor(sf::Color::Red);
 	srect.setOutlineThickness(0);
-	srect.setSize(sf::Vector2f(10,10));
-	srect.setOrigin(5,5);
+	srect.setSize(sf::Vector2f(8,8));
+	srect.setOrigin(4,4);
 
 	// Add nodes to their neighbors set
 	n1->neighbors.insert(n2);
@@ -120,32 +120,28 @@ Edge * Edge::createEdge(Node * n1, Node * n2, float thickness)
 
 bool Edge::destroyEdge(Node * n1, Node * n2)
 {
-	// Not null
+	// If null
 	if (!(n1 && n2)) return false;
 
-	// If not neighbors...
-	if (n1->neighbors.find(n2)==n1->neighbors.end() && n2->neighbors.find(n1)==n2->neighbors.end())
+	// If not neighbors
+	if (n1->neighbors.find(n2)==n1->neighbors.end() && n2->neighbors.find(n1)==n2->neighbors.end()) return false;
+
+	// Find and delete edge
+	for (std::set<Edge*>::iterator it = n1->edges.begin(); it != n1->edges.end(); ++it)
 	{
-		return false;
-	}
-	else
-	{
-		// Find and delete edge
-		for (std::set<Edge*>::iterator it = n1->edges.begin(); it != n1->edges.end(); ++it)
+		Edge * e = *it;
+		if (e->n1 == n1 && e->n2 == n2 || e->n1 == n2 && e->n2 == n1)
 		{
-			Edge * e = *it;
-			if (e->n1 == n1 && e->n2 == n2 || e->n1 == n2 && e->n2 == n1)
-			{
-				delete e; // Edge destructor will erase edge from its nodes' edge sets
-				// (one of which we're incrementing through) and erase it from the edge
-				// set and the quadtree (if they are set).
-				return true;
-			}
+			delete e; // Edge destructor will erase edge from its nodes' edge sets
+			// (one of which we're incrementing through) and erase it from the edge
+			// set and the quadtree (if they are set).
+			return true;
 		}
-		// n1 and n2 are neighbors, they must have an edge!
-		assert(!"Edge::destroyEdge: missing edge");
-		return false;
 	}
+
+	// n1 and n2 are neighbors, they must have an edge!
+	assert(!"Edge::destroyEdge: missing edge");
+	return false;
 }
 
 void Edge::setEdgeSet(std::set<Edge*> * edgeSet)
