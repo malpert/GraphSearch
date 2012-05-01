@@ -7,6 +7,7 @@
 
 #include "node.h"
 #include "edge.h"
+#include "face.h"
 #include "selection.h"
 #include "quadtree.h"
 

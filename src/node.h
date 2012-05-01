@@ -7,10 +7,12 @@
 #include "quadtree.h"
 
 class Edge;
+class Face;
 
 class Node
 {
 	friend class Edge;
+	friend class Face;
 
 public:
 
@@ -39,9 +41,10 @@ public:
 	float x;
 	float y;
 	bool selected;
-	std::set<Edge*> edges;
-	std::set<Node*> neighbors;
 	sf::CircleShape circ;
+	std::set<Node*> neighbors;
+	std::set<Edge*> edges;
+	std::set<Face*> faces;
 	
 	//
 	// Static

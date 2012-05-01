@@ -1,18 +1,26 @@
 #include "edge.h"
 #include "node.h"
+#include "face.h"
+
+#include <math.h>
 
 std::set<Edge*> * Edge::eset = 0;
 QuadTree<Edge*> * Edge::qtree = 0;
 
-Edge::Edge(Node * n1, Node * n2, float thickness) : n1(n1), n2(n2), ht(thickness/2), selected(false), updateDisabled(false)
+Edge::Edge(Node * n1, Node * n2, float thickness) : n1(n1), n2(n2), ht(thickness/2), selected(false), updateDisabled(false), faces(0), dummy(false)
 {
 	if (!(n1 && n2))
 		assert(!"Edge::Edge: nodes");
+
 	init();
 }
 
+Edge::Edge(Node * n1, Node * n2) : n1(n1), n2(n2), dummy(true) {}
+
 Edge::~Edge()
 {
+	if (dummy) return;
+
 	// Erase nodes from their neighbors sets
 	n1->neighbors.erase(n2);
 	n2->neighbors.erase(n1);
@@ -107,22 +115,22 @@ Edge * Edge::createEdge(Node * n1, Node * n2, float thickness)
 {
 	// If null
 	if (!n1 || !n2) return 0;
-
 	// If same
 	if (n1 == n2) return 0;
-
 	// If already neighbors
 	if (n1->neighbors.find(n2)!=n1->neighbors.end() || n2->neighbors.find(n1)!=n2->neighbors.end()) return 0;
 
-	// Create edge
-	return new Edge(n1, n2, thickness);
+	// Create edge, enforcing order of nodes
+	if (n1 < n2) return new Edge(n1, n2, thickness);
+	else return new Edge(n2, n1, thickness);
 }
 
 bool Edge::destroyEdge(Node * n1, Node * n2)
 {
 	// If null
 	if (!(n1 && n2)) return false;
-
+	// If same
+	if (n1 == n2) return false;
 	// If not neighbors
 	if (n1->neighbors.find(n2)==n1->neighbors.end() && n2->neighbors.find(n1)==n2->neighbors.end()) return false;
 
@@ -142,6 +150,25 @@ bool Edge::destroyEdge(Node * n1, Node * n2)
 	// n1 and n2 are neighbors, they must have an edge!
 	assert(!"Edge::destroyEdge: missing edge");
 	return false;
+}
+
+Edge * Edge::findEdge(const std::set<Edge*, Edge::Comp> & s, Node * n1, Node * n2)
+{
+	// If null
+	if (!n1 || !n2) return false;
+	// If same
+	if (n1 == n2) return false;
+
+	Edge * e;
+	if (n1 < n2)
+		e = new Edge(n1, n2);
+	else
+		e = new Edge(n2, n1);
+	std::set<Edge*, Edge::Comp>::iterator it = s.find(e);
+	delete e;
+	if (it != s.end())
+		return *it;
+	return 0;
 }
 
 void Edge::setEdgeSet(std::set<Edge*> * edgeSet)
