@@ -9,6 +9,8 @@ QuadTree<Edge*> * Edge::qtree = 0;
 
 Edge::Edge(Node * n1, Node * n2, float thickness) : n1(n1), n2(n2), ht(thickness/2), selected(false), updateDisabled(false), faces(0), dummy(false)
 {
+	// Assumes nodes ordered by address
+
 	if (!(n1 && n2))
 		assert(!"Edge::Edge: nodes");
 
@@ -56,6 +58,20 @@ void Edge::init()
 	if (qtree) qtree->insert(this, srect.getPosition().x, srect.getPosition().y);
 
 	update(); // Will add self to quadtree
+}
+
+void Edge::updateBorder()
+{
+	if (faces == 1)
+	{
+		rect.setFillColor(sf::Color::Red);
+		//rect.setOutlineThickness(1);
+	}
+	else
+	{
+		rect.setFillColor(sf::Color::Black);
+		//rect.setOutlineThickness(0);
+	}
 }
 
 void Edge::update()
@@ -135,7 +151,7 @@ bool Edge::destroyEdge(Node * n1, Node * n2)
 	if (n1->neighbors.find(n2)==n1->neighbors.end() && n2->neighbors.find(n1)==n2->neighbors.end()) return false;
 
 	// Find and delete edge
-	for (std::set<Edge*>::iterator it = n1->edges.begin(); it != n1->edges.end(); ++it)
+	for (auto it = n1->edges.begin(); it != n1->edges.end(); ++it)
 	{
 		Edge * e = *it;
 		if (e->n1 == n1 && e->n2 == n2 || e->n1 == n2 && e->n2 == n1)

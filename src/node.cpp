@@ -16,7 +16,8 @@ Node::Node(float x, float y) : x(x), y(y), selected(false)
 
 Node::~Node()
 {
-	for (std::set<Edge*>::iterator it = edges.begin(); it != edges.end();)
+	// Delete edges
+	for (auto it = edges.begin(); it != edges.end();)
 	{
 		Edge * e = *it; // Grab edge before it is erased from its nodes' edge sets.
 		++it; // Increment before edge erased from set we're incrementing through.
@@ -24,6 +25,7 @@ Node::~Node()
 		// (one of which we're incrementing through) and erase it from the edge
 		// set and the quadtree (if they are set).
 	}
+
 	// Erase self from node set and quadtree (if they are set)
 	if (nset) nset->erase(this);
 	if (qtree) qtree->erase(this, x, y);
@@ -34,7 +36,7 @@ void Node::init()
 	circ.setRadius(5);
 	circ.setPosition(x-5, y-5);
 	circ.setFillColor(sf::Color::Black);
-	circ.setOutlineColor(sf::Color::Red);
+	circ.setOutlineColor(sf::Color::Green);
 	circ.setOutlineThickness(0);
 	// Add self to node set and quadtree (if they are set)
 	if (nset) nset->insert(this);

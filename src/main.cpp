@@ -54,6 +54,8 @@ int main()
 	Edge::setEdgeSet(&edges);
 	Edge::setQuadTree(&qte);
 
+	std::set<Face*> faces;
+
 	//
 	// Selection
 	//
@@ -77,6 +79,7 @@ int main()
 	int prevy = 0;
 	int dragx2 = 0;
 	int dragy2 = 0;
+	bool locked = false;
 
 	//
     // Start game loop
@@ -126,29 +129,35 @@ int main()
 				}
 				else if (Event.key.code == sf::Keyboard::Back || Event.key.code == sf::Keyboard::Delete) // Backspace or Delete
 				{
-					// Delete selected nodes and their edges
-					for (Selection::iterator it = selection.begin(); it != selection.end(); ++it)
+					if (!locked)
 					{
-						// Node destructor will remove node from node set and quadtree
-						// and will delete its edges. Edge destructor will remove edge
-						// from its nodes, the edge set, and quadtree.
-						delete *it;
-					}
-					selection.clear();
-				}
-				else if (Event.key.code == sf::Keyboard::Insert || Event.key.code == sf::Keyboard::BackSlash || Event.key.code == sf::Keyboard::E) // Insert, \ or E
-				{
-					// Toggle edge on a pair of selected nodes
-					if (selection.size() == 2)
-					{
-						Selection::iterator i1 = selection.begin(), i2 = selection.begin();
-						++i2;
-						// Factory creates edge only of nodes are not already neighbors.
-						// Edges add themselves to edge set, quadtree and its nodes' edge sets.
-						if (!Edge::createEdge(*i1, *i2))
+						// Delete selected nodes and their edges
+						for (Selection::iterator it = selection.begin(); it != selection.end(); ++it)
 						{
-							// Edge already exists, so remove it instead
-							Edge::destroyEdge(*i1, *i2);
+							// Node destructor will remove node from node set and quadtree
+							// and will delete its edges. Edge destructor will remove edge
+							// from its nodes, the edge set, and quadtree.
+							delete *it;
+						}
+						selection.clear();
+					}
+				}
+				else if (Event.key.code == sf::Keyboard::Insert || Event.key.code == sf::Keyboard::BackSlash || Event.key.code == sf::Keyboard::E) // Insert, BackSlash, or E
+				{
+					if (!locked)
+					{
+						// Toggle edge on a pair of selected nodes
+						if (selection.size() == 2)
+						{
+							Selection::iterator i1 = selection.begin(), i2 = selection.begin();
+							++i2;
+							// Factory creates edge only of nodes are not already neighbors.
+							// Edges add themselves to edge set, quadtree and its nodes' edge sets.
+							if (!Edge::createEdge(*i1, *i2))
+							{
+								// Edge already exists, so remove it instead
+								Edge::destroyEdge(*i1, *i2);
+							}
 						}
 					}
 				}
@@ -175,6 +184,59 @@ int main()
 				{
 					keySpaceDown = false;
 				}
+				else if (Event.key.code == sf::Keyboard::B) // B
+				{
+					//
+					// Find faces, find borders, build visibility graph
+					//
+					int iterations = 0;
+
+					if (!locked)
+					{
+						locked = true;
+
+						// Find all triangular faces
+						for (auto it = edges.begin(); it != edges.end(); ++it)
+						{
+							Node *n1, *n2;
+							n1 = (*it)->n1;
+							n2 = (*it)->n2;
+
+							for (auto jt = n1->neighbors.begin(); jt != n1->neighbors.end(); ++jt)
+							{
+								++iterations;
+								Node * n3 = *jt;
+
+								// Check if neighbors form a face
+								if (n2->neighbors.find(n3) != n2->neighbors.end())
+								{
+									Face * f = Face::createFace(n1, n2, n3);
+									if (f)
+									{
+										faces.insert(f);
+									}
+								}
+							}
+						}
+					}
+					else
+					{
+						locked = false;
+
+						// Delete all faces
+						for (auto it = faces.begin(); it != faces.end(); ++it)
+							Face::destoryFace(*it);
+						faces.clear();
+					}
+
+					// Update edges' status
+					for (auto it = edges.begin(); it != edges.end(); ++it)
+					{
+						(*it)->updateBorder();
+					}
+					std::cout << "Faces=" << faces.size() << std::endl;
+					std::cout << "Iterations=" << iterations << std::endl;
+				}
 			}
 
 			//
@@ -197,50 +259,53 @@ int main()
 					}
 					else if (keyCtrlDown) // Ctrl
 					{
-						// Check if mouse over node
-						std::vector<Node*> v;
-						if (qtn.queryRegion(Event.mouseButton.x+selection.getRange(), Event.mouseButton.y+selection.getRange(), Event.mouseButton.x-selection.getRange(), Event.mouseButton.y-selection.getRange(), v))
+						if (!locked)
 						{
-							if (keyAltDown)
+							// Check if mouse over node
+							std::vector<Node*> v;
+							if (qtn.queryRegion(Event.mouseButton.x+selection.getRange(), Event.mouseButton.y+selection.getRange(), Event.mouseButton.x-selection.getRange(), Event.mouseButton.y-selection.getRange(), v))
 							{
-								Node * n = v[0];
-								// Remove edges between clicked node and all selected nodes
-								for (Selection::iterator it = selection.begin(); it != selection.end(); ++it)
-									Edge::destroyEdge(n, *it);
+								if (keyAltDown)
+								{
+									Node * n = v[0];
+									// Remove edges between clicked node and all selected nodes
+									for (Selection::iterator it = selection.begin(); it != selection.end(); ++it)
+										Edge::destroyEdge(n, *it);
+								}
+								else
+								{
+									Node * n = v[0];
+									// Add edge between clicked node and all selected nodes
+									for (Selection::iterator it = selection.begin(); it != selection.end(); ++it)
+										Edge::createEdge(n, *it);
+									// If shift key not down, clear selection set
+									if (!keyShiftDown) selection.clearSelection();
+									// Add to selection
+									selection.insertSelection(n);
+									mouseDownOnSelection = true;
+								}
 							}
 							else
 							{
-								Node * n = v[0];
-								// Add edge between clicked node and all selected nodes
-								for (Selection::iterator it = selection.begin(); it != selection.end(); ++it)
-									Edge::createEdge(n, *it);
-								// If shift key not down, clear selection set
-								if (!keyShiftDown) selection.clearSelection();
-								// Add to selection
-								selection.insertSelection(n);
-								mouseDownOnSelection = true;
-							}
-						}
-						else
-						{
-							// Place node
-							if (qtn.contains(Event.mouseButton.x, Event.mouseButton.y))
-							{
-								// Nodes add themselves to node set and quadtree
-								Node * n = new Node(Event.mouseButton.x, Event.mouseButton.y);
-								if (keyAltDown) selection.clearSelection();
-								// Add edge between new node and all selected nodes
-								for (Selection::iterator it = selection.begin(); it != selection.end(); ++it)
+								// Place node
+								if (qtn.contains(Event.mouseButton.x, Event.mouseButton.y))
 								{
-									// Factory creates edge only of nodes are not already neighbors.
-									// Edges add themselves to edge set, quadtree and their nodes' edge sets.
-									Edge::createEdge(n, *it);
+									// Nodes add themselves to node set and quadtree
+									Node * n = new Node(Event.mouseButton.x, Event.mouseButton.y);
+									if (keyAltDown) selection.clearSelection();
+									// Add edge between new node and all selected nodes
+									for (Selection::iterator it = selection.begin(); it != selection.end(); ++it)
+									{
+										// Factory creates edge only of nodes are not already neighbors.
+										// Edges add themselves to edge set, quadtree and their nodes' edge sets.
+										Edge::createEdge(n, *it);
+									}
+									// Update selection
+									if (!keyShiftDown) selection.clearSelection();
+									// Add to selection
+									selection.insertSelection(n);
+									mouseDownOnSelection = true;
 								}
-								// Update selection
-								if (!keyShiftDown) selection.clearSelection();
-								// Add to selection
-								selection.insertSelection(n);
-								mouseDownOnSelection = true;
 							}
 						}
 					}

@@ -25,9 +25,7 @@ public:
 	void init();
 
 	void select();
-
 	void deselect();
-
 	bool isSelected();
 
 	void setPosition(int x, int y);

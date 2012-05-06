@@ -38,6 +38,8 @@ public:
 	
 	void init();
 
+	void updateBorder();
+
 	void update();
 
 	void move(int dx, int dy);
