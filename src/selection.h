@@ -28,7 +28,7 @@ public:
 
 	void insertSelection(std::vector<Node*> v)
 	{
-		for (std::vector<Node*>::iterator it = v.begin(); it != v.end(); ++it)
+		for (auto it = v.begin(); it != v.end(); ++it)
 		{
 			insertSelection(*it);
 		}
@@ -43,7 +43,7 @@ public:
 
 	void eraseSelection(std::vector<Node*> v)
 	{
-		for (std::vector<Node*>::iterator it = v.begin(); it != v.end(); ++it)
+		for (auto it = v.begin(); it != v.end(); ++it)
 		{
 			erase(*it);
 			(*it)->deselect();
@@ -53,7 +53,7 @@ public:
 
 	void clearSelection()
 	{
-		for (Selection::iterator it = begin(); it != end(); ++it)
+		for (auto it = begin(); it != end(); ++it)
 			(*it)->deselect();
 		clear();
 	}
@@ -65,7 +65,7 @@ public:
 	void moveSelection(float x, float y)
 	{
 		if (empty() || xmin+x <= gxmin || ymin+y <= gymin || xmax+x >= gxmax || ymax+y >= gymax) return;
-		for (Selection::iterator it = begin(); it != end(); ++it)
+		for (auto it = begin(); it != end(); ++it)
 			(*it)->move(x, y);
 		moveSelectionBounds(x, y);
 	}
@@ -95,7 +95,7 @@ private:
 		xmin = xmax = (*begin())->x;
 		ymin = ymax = (*begin())->y;
 
-		for (Selection::iterator it = begin(); it != end(); ++it)
+		for (auto it = begin(); it != end(); ++it)
 		{
 			if ((*it)->x < xmin) xmin = (*it)->x;
 			if ((*it)->y < ymin) ymin = (*it)->y;

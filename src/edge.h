@@ -32,9 +32,10 @@ private:
 
 	Edge(Node * n1, Node * n2, float thickness);
 	Edge(Node * n1, Node * n2); // Dummy for finding within a set using Comp
-	~Edge();
 
 public:
+
+	~Edge();
 	
 	void init();
 
@@ -69,4 +70,7 @@ public:
 	static void setQuadTree(QuadTree<Edge*> * quadTree);
 	static std::set<Edge*> * eset;
 	static QuadTree<Edge*> * qtree;
+	static bool intersect(Edge * e1, Edge * e2, float * x = 0, float * y = 0);
+	static bool intersect(Edge * e1, Node * n1, Node * n2, float * x = 0, float * y = 0);
+	static bool intersect(Node * n1, Node * n2, Node * n3, Node * n4, float * x = 0, float * y = 0);
 };

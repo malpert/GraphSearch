@@ -4,6 +4,7 @@
 #include <set>
 #include <math.h>
 #include <algorithm>
+#include <stack>
 
 #include "node.h"
 #include "edge.h"
@@ -55,6 +56,7 @@ int main()
 	Edge::setQuadTree(&qte);
 
 	std::set<Face*> faces;
+	std::set<Edge*> visibility;
 
 	//
 	// Selection
@@ -73,12 +75,12 @@ int main()
 	bool mouseDragMoving = false;
 	bool mouseDragSelecting = false;
 	bool mouseDownOnSelection = false;
-	int dragx1 = 0;
-	int dragy1 = 0;
-	int prevx = 0;
-	int prevy = 0;
-	int dragx2 = 0;
-	int dragy2 = 0;
+	int mousex1 = 0;
+	int mousey1 = 0;
+	int mousexp = 0;
+	int mouseyp = 0;
+	int mousex2 = 0;
+	int mousey2 = 0;
 	bool locked = false;
 
 	//
@@ -132,7 +134,7 @@ int main()
 					if (!locked)
 					{
 						// Delete selected nodes and their edges
-						for (Selection::iterator it = selection.begin(); it != selection.end(); ++it)
+						for (auto it = selection.begin(); it != selection.end(); ++it)
 						{
 							// Node destructor will remove node from node set and quadtree
 							// and will delete its edges. Edge destructor will remove edge
@@ -149,7 +151,7 @@ int main()
 						// Toggle edge on a pair of selected nodes
 						if (selection.size() == 2)
 						{
-							Selection::iterator i1 = selection.begin(), i2 = selection.begin();
+							auto i1 = selection.begin(), i2 = selection.begin();
 							++i2;
 							// Factory creates edge only of nodes are not already neighbors.
 							// Edges add themselves to edge set, quadtree and its nodes' edge sets.
@@ -218,6 +220,62 @@ int main()
 								}
 							}
 						}
+
+						// Update edges' status (mark border edges)
+						for (auto it = edges.begin(); it != edges.end(); ++it)
+						{
+							(*it)->updateBorder();
+						}
+
+						//
+						// Build visibility graph
+						//
+
+						// Grab border edges
+						std::vector<Edge*> border;
+						for (auto it = edges.begin(); it != edges.end(); ++it)
+							if ((*it)->faces == 1) border.push_back(*it);
+
+						// Get stack of nodes
+						std::deque<Node*> nodestack(nodes.begin(), nodes.end());
+
+						// Until empty, pop node off stack...
+						while (!nodestack.empty())
+						{
+							Node * n1 = nodestack.back();
+							nodestack.pop_back();
+							
+							// For each node remaining on stack...
+							for (size_t i = 0; i < nodestack.size(); ++i)
+							{
+								bool intersectsBorder = false;
+								Node * n2 = nodestack[i];
+
+								// For each border edge...
+								for (size_t j = 0; j < border.size(); ++j)
+								{
+									// Check for intersection between n1, n2, and border edges
+									if (Edge::intersect(border[j], n1, n2))
+									{
+										intersectsBorder = true;
+										break;
+									}
+								}
+
+								// If edge between n1 and n2 doesn't intersect border
+								if (!intersectsBorder)
+								{
+									// Create new edge
+									Edge * e = Edge::createEdge(n1, n2, 1);
+									if (e)
+									{
+										e->srect.setFillColor(sf::Color::Transparent);
+										visibility.insert(e);
+									}
+								}
+							}
+						}
+
 					}
 					else
 					{
@@ -227,15 +285,35 @@ int main()
 						for (auto it = faces.begin(); it != faces.end(); ++it)
 							Face::destoryFace(*it);
 						faces.clear();
+
+						// Delete visibility edges
+						for (auto it = visibility.begin(); it != visibility.end(); ++it)
+							delete *it;
+						visibility.clear();
+
+						// Update edges' status (un-mark border edges)
+						for (auto it = edges.begin(); it != edges.end(); ++it)
+						{
+							(*it)->updateBorder();
+						}
 					}
 
-					// Update edges' status
-					for (auto it = edges.begin(); it != edges.end(); ++it)
-					{
-						(*it)->updateBorder();
-					}
+
 					std::cout << "Faces=" << faces.size() << std::endl;
 					std::cout << "Iterations=" << iterations << std::endl;
+				}
+				else if(Event.key.code == sf::Keyboard::I) // I
+				{
+					if (edges.size() == 2)
+					{
+						auto it = edges.begin();
+						Edge * e1 = *it;
+						++it;
+						Edge * e2 = *it;
+						float x = 0, y = 0;
+						bool intersect = Edge::intersect(e1, e2, &x, &y);
+						std::cout << intersect << ' ' << x << ' ' << y << std::endl;
+					}
 				}
 			}
 
@@ -250,12 +328,84 @@ int main()
 				if (Event.mouseButton.button == sf::Mouse::Left)
 				{
 					mouseLeftDown = true;
-					dragx1 = prevx = Event.mouseButton.x;
-					dragy1 = prevy = Event.mouseButton.y;
+					mousex1 = mousexp = Event.mouseButton.x;
+					mousey1 = mouseyp = Event.mouseButton.y;
 
 					if (keySpaceDown) // Space
 					{
 						
+					}
+					else if (keyShiftDown && keyAltDown) // Shift and Alt
+					{
+						//
+						// Extrude
+						//
+						if (selection.size() == 2)
+						{
+							auto it = selection.begin();
+							Node * n1 = *it;
+							++it;
+							Node * n2 = *it;
+							selection.clearSelection();
+							
+							Node * n3 = 0;
+							Node * n4 = 0;
+
+							// Check if mouse over edge
+							std::vector<Edge*> v;
+							if (qte.queryRegion(Event.mouseButton.x+selection.getRange(), Event.mouseButton.y+selection.getRange(), Event.mouseButton.x-selection.getRange(), Event.mouseButton.y-selection.getRange(), v))
+							{
+								// Extrude from edge and connect to existing edge
+								Edge * e = v[0];
+								n3 = e->n1;
+								n4 = e->n2;
+
+								if (!Edge::intersect(n1, n3, n2, n4))
+								{
+									Edge::createEdge(n1, n3);
+									Edge::createEdge(n2, n4);
+									if (n1->neighbors.size()+n4->neighbors.size() <= n2->neighbors.size()+n3->neighbors.size())
+										Edge::createEdge(n1, n4);
+									else
+										Edge::createEdge(n2, n3);
+								}
+								else
+								{
+									Edge::createEdge(n1, n4);
+									Edge::createEdge(n2, n3);
+									if (n1->neighbors.size()+n3->neighbors.size() <= n2->neighbors.size()+n4->neighbors.size())
+										Edge::createEdge(n1, n3);
+									else
+										Edge::createEdge(n2, n4);
+								}
+							}
+							else
+							{
+								// Extrude from edge to new edge at mouse
+								float x = (n1->x + n2->x) / 2;
+								float y = (n1->y + n2->y) / 2;
+								float dx = mousex1 - x;
+								float dy = mousey1 - y;
+
+								n3 = new Node(n1->x + dx, n1->y + dy);
+								n4 = new Node(n2->x + dx, n2->y + dy);
+								Edge::createEdge(n3, n4);
+
+								Edge::createEdge(n1, n3);
+								Edge::createEdge(n2, n4);
+								if (n1->neighbors.size() <= n2->neighbors.size())
+									Edge::createEdge(n1, n4);
+								else
+									Edge::createEdge(n2, n3);
+
+								selection.insertSelection(n3);
+								selection.insertSelection(n4);
+							}
+
+
+
+							mouseDownOnSelection = true;
+						}
 					}
 					else if (keyCtrlDown) // Ctrl
 					{
@@ -269,14 +419,14 @@ int main()
 								{
 									Node * n = v[0];
 									// Remove edges between clicked node and all selected nodes
-									for (Selection::iterator it = selection.begin(); it != selection.end(); ++it)
+									for (auto it = selection.begin(); it != selection.end(); ++it)
 										Edge::destroyEdge(n, *it);
 								}
 								else
 								{
 									Node * n = v[0];
 									// Add edge between clicked node and all selected nodes
-									for (Selection::iterator it = selection.begin(); it != selection.end(); ++it)
+									for (auto it = selection.begin(); it != selection.end(); ++it)
 										Edge::createEdge(n, *it);
 									// If shift key not down, clear selection set
 									if (!keyShiftDown) selection.clearSelection();
@@ -294,7 +444,7 @@ int main()
 									Node * n = new Node(Event.mouseButton.x, Event.mouseButton.y);
 									if (keyAltDown) selection.clearSelection();
 									// Add edge between new node and all selected nodes
-									for (Selection::iterator it = selection.begin(); it != selection.end(); ++it)
+									for (auto it = selection.begin(); it != selection.end(); ++it)
 									{
 										// Factory creates edge only of nodes are not already neighbors.
 										// Edges add themselves to edge set, quadtree and their nodes' edge sets.
@@ -468,7 +618,7 @@ int main()
 						{
 							// Remove all from selection
 							std::vector<Node*> v;
-							qtn.queryRegion(dragx1, dragy1, dragx2, dragy2, v);
+							qtn.queryRegion(mousex1, mousey1, mousex2, mousey2, v);
 							selection.eraseSelection(v);
 						}
 						else if (!keyCtrlDown)
@@ -480,7 +630,7 @@ int main()
 							}
 							// Add all to selection (that aren't already selected)
 							std::vector<Node*> v;
-							qtn.queryRegion(dragx1, dragy1, dragx2, dragy2, v);
+							qtn.queryRegion(mousex1, mousey1, mousex2, mousey2, v);
 							selection.insertSelection(v);
 						}
 					}
@@ -506,8 +656,8 @@ int main()
 			//
 			if (Event.type == sf::Event::MouseMoved)
 			{
-				dragx2 = Event.mouseMove.x;
-				dragy2 = Event.mouseMove.y;
+				mousex2 = Event.mouseMove.x;
+				mousey2 = Event.mouseMove.y;
 				 
 				//
 				// Left
@@ -517,7 +667,7 @@ int main()
 					if (mouseDownOnSelection || keySpaceDown)
 					{
 						mouseDragMoving = true;
-						selection.moveSelection(dragx2-prevx, dragy2-prevy);
+						selection.moveSelection(mousex2-mousexp, mousey2-mouseyp);
 					}
 					else //if (keyShiftDown || keyAltDown)
 					{
@@ -533,8 +683,8 @@ int main()
 
 				}
 
-				prevx = dragx2;
-				prevy = dragy2;
+				mousexp = mousex2;
+				mouseyp = mousey2;
 			}
         }
 
@@ -556,14 +706,14 @@ int main()
 		qte.draw(App);
 
 		// Draw edges
-		for (std::set<Edge*>::iterator it = edges.begin(); it != edges.end(); ++it)
+		for (auto it = edges.begin(); it != edges.end(); ++it)
 		{
 			App.draw((*it)->rect);
 			App.draw((*it)->srect);
 		}
 
 		// Draw nodes
-		for (std::set<Node*>::iterator it = nodes.begin(); it != nodes.end(); ++it)
+		for (auto it = nodes.begin(); it != nodes.end(); ++it)
 		{
 			App.draw((*it)->circ);
 			//std::cout << "n=" << (*it)->neighbors.size() << " e=" << (*it)->edges.size() << std::endl;
@@ -572,8 +722,8 @@ int main()
 		// Draw drag select
 		if (mouseDragSelecting)
 		{
-			sf::RectangleShape rect(sf::Vector2f((float)std::abs(dragx1-dragx2), (float)std::abs(dragy1-dragy2)));
-			rect.setPosition((float)std::min(dragx1,dragx2), (float)std::min(dragy1,dragy2));
+			sf::RectangleShape rect(sf::Vector2f((float)std::abs(mousex1-mousex2), (float)std::abs(mousey1-mousey2)));
+			rect.setPosition((float)std::min(mousex1,mousex2), (float)std::min(mousey1,mousey2));
 			rect.setFillColor(sf::Color::Transparent);
 			rect.setOutlineThickness(1);
 			rect.setOutlineColor(sf::Color::Black);

@@ -3,6 +3,7 @@
 #include "face.h"
 
 #include <math.h>
+#include <limits>
 
 std::set<Edge*> * Edge::eset = 0;
 QuadTree<Edge*> * Edge::qtree = 0;
@@ -180,7 +181,7 @@ Edge * Edge::findEdge(const std::set<Edge*, Edge::Comp> & s, Node * n1, Node * n
 		e = new Edge(n1, n2);
 	else
 		e = new Edge(n2, n1);
-	std::set<Edge*, Edge::Comp>::iterator it = s.find(e);
+	auto it = s.find(e);
 	delete e;
 	if (it != s.end())
 		return *it;
@@ -195,4 +196,51 @@ void Edge::setEdgeSet(std::set<Edge*> * edgeSet)
 void Edge::setQuadTree(QuadTree<Edge*> * quadTree)
 {
 	qtree = quadTree;
+}
+
+bool Edge::intersect(Edge * e1, Edge * e2, float * xret, float * yret)
+{
+	return Edge::intersect(e1->n1, e1->n2, e2->n1, e2->n2, xret, yret);
+}
+
+bool Edge::intersect(Edge * e1, Node * n1, Node * n2, float * xret, float * yret)
+{
+	return Edge::intersect(e1->n1, e1->n2, n1, n2, xret, yret);
+}
+
+bool Edge::intersect(Node * n1, Node * n2, Node * n3, Node * n4, float * xret, float * yret)
+{
+	float x1 = n1->x,	y1 = n1->y;
+	float x2 = n2->x,	y2 = n2->y;
+	float x3 = n3->x,	y3 = n3->y;
+	float x4 = n4->x,	y4 = n4->y;
+
+	float d = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+
+	if (d == 0)
+	{
+		return false;
+	}
+	else
+	{
+		// Get the x and y
+		float pre = (x1*y2 - y1*x2);
+		float post = (x3*y4 - y3*x4);
+		float x = ( pre * (x3 - x4) - (x1 - x2) * post ) / d;
+		float y = ( pre * (y3 - y4) - (y1 - y2) * post ) / d;
+
+		// If the point of intersection is not within both line segments, then the segments do not intersect. The
+		// intersection point must not be an endpoint, i.e., lines must cross, not just touch. The equality check is
+		// there to test for this rare case, which would likely only occur if the floats held identical integral values.
+		if ( x <= std::min(x1, x2) || x >= std::max(x1, x2) || x <= std::min(x3, x4) || x >= std::max(x3, x4) ) return false;
+		if ( y <= std::min(y1, y2) || y >= std::max(y1, y2) || y <= std::min(y3, y4) || y >= std::max(y3, y4) ) return false;
+
+		// Return the point of intersection
+		if (xret != 0 && yret != 0)
+		{
+			*xret = x;
+			*yret = y;
+		}
+		return true;
+	}
 }

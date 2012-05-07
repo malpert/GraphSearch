@@ -238,7 +238,7 @@ public:
 		QuadTree * qt = getCellContaining(x1, y1);
 		if (qt && qt->contains(x2, y2))
 		{
-			for (std::vector<Item>::iterator it = qt->items.begin(); it != qt->items.end(); ++it)
+			for (auto it = qt->items.begin(); it != qt->items.end(); ++it)
 			{
 				if (it->data == data)
 				{
@@ -447,7 +447,7 @@ private:
 		}
 		else
 		{
-			for (std::vector<Item>::iterator it = items.begin(); it != items.end(); ++it)
+			for (auto it = items.begin(); it != items.end(); ++it)
 			{
 				if (it->data == data)
 				{
@@ -495,7 +495,7 @@ private:
 		}
 		else
 		{
-			for (std::vector<Item>::iterator it = items.begin(); it != items.end(); ++it)
+			for (auto it = items.begin(); it != items.end(); ++it)
 			{
 				if (it->data == data)
 				{
@@ -532,7 +532,7 @@ private:
 		}
 		else
 		{
-			std::vector<Item>::iterator it = items.begin();
+			auto it = items.begin();
 			while (it != items.end())
 			{
 				if (it->data == data)

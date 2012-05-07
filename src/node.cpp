@@ -73,7 +73,7 @@ void Node::setPosition(float nx, float ny)
 	x = nx;
 	y = ny;
 	circ.setPosition(nx-5, ny-5);
-	for (std::set<Edge*>::iterator it = edges.begin(); it != edges.end(); ++it)
+	for (auto it = edges.begin(); it != edges.end(); ++it)
 		(*it)->update();
 
 	// Insert self into quadtree
@@ -95,7 +95,7 @@ void Node::move(float dx, float dy)
 	circ.move(dx, dy);
 
 	// Update edges
-	for (std::set<Edge*>::iterator it = edges.begin(); it != edges.end(); ++it)
+	for (auto it = edges.begin(); it != edges.end(); ++it)
 		(*it)->update();
 }
 
