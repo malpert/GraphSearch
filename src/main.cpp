@@ -192,6 +192,7 @@ int main()
 					// Find faces, find borders, build visibility graph
 					//
 					int iterations = 0;
+					int edgesBefore = edges.size();
 
 					if (!locked)
 					{
@@ -231,11 +232,6 @@ int main()
 						// Build visibility graph
 						//
 
-						// Grab border edges
-						std::vector<Edge*> border;
-						for (auto it = edges.begin(); it != edges.end(); ++it)
-							if ((*it)->faces == 1) border.push_back(*it);
-
 						// Get stack of nodes
 						std::deque<Node*> nodestack(nodes.begin(), nodes.end());
 
@@ -248,22 +244,32 @@ int main()
 							// For each node remaining on stack...
 							for (size_t i = 0; i < nodestack.size(); ++i)
 							{
-								bool intersectsBorder = false;
+								// New visibility edges must overlap at least
+								// one internal edge and no border edges.
+								bool good = false;
+
 								Node * n2 = nodestack[i];
 
-								// For each border edge...
-								for (size_t j = 0; j < border.size(); ++j)
+								// For each edge...
+								for (auto jt = edges.begin(); jt != edges.end(); ++jt)
 								{
-									// Check for intersection between n1, n2, and border edges
-									if (Edge::intersect(border[j], n1, n2))
+									// Check for intersection between n1, n2, and edge
+									if (Edge::intersect(*jt, n1, n2))
 									{
-										intersectsBorder = true;
-										break;
+										if ((*jt)->faces != 1)
+										{
+											good = true;
+										}
+										else if ((*jt)->faces == 1)
+										{
+											good = false;
+											break;
+										}
 									}
 								}
 
-								// If edge between n1 and n2 doesn't intersect border
-								if (!intersectsBorder)
+								// If edge between n1 and n2 is good
+								if (good)
 								{
 									// Create new edge
 									Edge * e = Edge::createEdge(n1, n2, 1);
@@ -299,8 +305,14 @@ int main()
 					}
 
 
-					std::cout << "Faces=" << faces.size() << std::endl;
-					std::cout << "Iterations=" << iterations << std::endl;
+					if (locked)
+					{
+						std::cout << "Faces=" << faces.size() << '\n';
+						std::cout << "Iterations=" << iterations << '\n';
+						std::cout << "Edges before=" << edgesBefore << '\n';
+						std::cout << "New edges=" << ((int)edges.size() - edgesBefore) << '\n';
+						std::cout << "Edges after=" << edges.size() << std::endl;
+					}
 				}
 				else if(Event.key.code == sf::Keyboard::I) // I
 				{
