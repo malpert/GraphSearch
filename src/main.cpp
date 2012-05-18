@@ -5,12 +5,47 @@
 #include <math.h>
 #include <algorithm>
 #include <stack>
+#include <fstream>
 
 #include "node.h"
 #include "edge.h"
 #include "face.h"
 #include "selection.h"
 #include "quadtree.h"
+
+std::vector<std::string> split( const std::string & s, const std::string & pat )
+{
+	std::vector<std::string> v;
+	// if pattern is emptry string, pushback entire string and return
+	if( pat == "" )
+	{
+		v.push_back( s );
+		return v;
+	}
+
+	std::string::size_type next, last;
+	next = 0;
+	last = 0;
+
+	// loop until pattern not found
+	while( next != std::string::npos )
+	{
+		// find pattern
+		next = s.find(pat, last);
+		if( next != std::string::npos )
+		{
+			// push back substr between last pattern and new pattern
+			v.push_back( s.substr(last, next-last) );
+			// next search will start from right after last pattern
+			last = next + pat.size();
+		}
+	}
+
+	// last pattern found, push back last substr
+	v.push_back( s.substr(last) );
+
+	return v;
+}
 
 int main()
 {
@@ -161,6 +196,37 @@ int main()
 								Edge::destroyEdge(*i1, *i2);
 							}
 						}
+					}
+				}
+				else if(Event.key.code == sf::Keyboard::I) // I
+				{
+					//
+					// Test for intersection
+					//
+					if (edges.size() == 2)
+					{
+						auto it = edges.begin();
+						Edge * e1 = *it;
+						++it;
+						Edge * e2 = *it;
+						float x = 0, y = 0;
+						bool intersect = Edge::intersect(e1, e2, &x, &y);
+						std::cout << intersect << ' ' << x << ' ' << y << std::endl;
+					}
+				}
+				else if (Event.key.code == sf::Keyboard::R) // R
+				{
+					if (keyCtrlDown)
+					{
+						//
+						// Reset
+						//
+						std::vector<Node*> v(nodes.begin(), nodes.end());
+						for (auto it = v.begin(); it != v.end(); ++it)
+							delete *it;
+						selection.clear();
+						faces.clear();
+						visibility.clear();
 					}
 				}
 			}
@@ -314,17 +380,100 @@ int main()
 						std::cout << "Edges after=" << edges.size() << std::endl;
 					}
 				}
-				else if(Event.key.code == sf::Keyboard::I) // I
+				else if(Event.key.code == sf::Keyboard::S) // S
 				{
-					if (edges.size() == 2)
+					if (keyCtrlDown)
 					{
-						auto it = edges.begin();
-						Edge * e1 = *it;
-						++it;
-						Edge * e2 = *it;
-						float x = 0, y = 0;
-						bool intersect = Edge::intersect(e1, e2, &x, &y);
-						std::cout << intersect << ' ' << x << ' ' << y << std::endl;
+						//
+						// Save graph
+						//
+						std::cout << "Saving graph . . ." << std::endl;
+
+						std::map<Node*,int> m;
+						int id = 0;
+						for (auto it = nodes.begin(); it != nodes.end(); ++it)
+						{
+							m[*it] = id++;
+						}
+
+						std::vector<std::pair<int, int>> v;
+						for (auto it = edges.begin(); it != edges.end(); ++it)
+						{
+							v.push_back(std::make_pair(m[(*it)->n1], m[(*it)->n2]));
+						}
+
+						std::ofstream fout("graph.dat");
+						if (!fout)
+						{
+							std::cerr << "\nError opening file for write" << std::endl;
+						}
+						else
+						{
+							for (auto it = m.begin(); it != m.end(); ++it)
+							{
+								fout << "v " << (*it).second << ' ' << (*it).first->x << ' ' << (*it).first->y << '\n';
+							}
+
+							for (auto it = v.begin(); it != v.end(); ++it)
+							{
+								fout << "e " << it->first << ' ' << it->second << '\n';
+							}
+						}
+						fout.close();
+
+						std::cout << "Nodes=" << m.size() << "  Edges=" << v.size() << std::endl;
+					}
+				}
+				else if(Event.key.code == sf::Keyboard::L) // L
+				{
+					if (keyCtrlDown)
+					{
+						//
+						// Load graph
+						//
+						std::cout << "Loading graph . . ." << std::endl;
+
+						std::ifstream fin("graph.dat");
+						if (!fin)
+						{
+							std::cerr << "Error opening file for read" << std::endl;
+						}
+						else
+						{
+							std::map<int, Node*> m;
+							int edges = 0;
+							std::string line;
+							while (std::getline(fin, line))
+							{
+								auto v = split(line, " ");
+								if (v.empty())
+								{
+									continue;
+								}
+								else if (v[0] == "v")
+								{
+									// Nodes
+									int id = std::atoi(v[1].c_str());
+									float x = (float)std::atof(v[2].c_str());
+									float y = (float)std::atof(v[3].c_str());
+									m[id] = new Node(x,y);
+								}
+								else if (v[0] == "e")
+								{
+									// Edges
+									int id1 = std::atoi(v[1].c_str());
+									int id2 = std::atoi(v[2].c_str());
+									Edge::createEdge(m[id1], m[id2]);
+									++edges;
+								}
+								else
+								{
+									continue;
+								}
+							}
+							std::cout << "Nodes=" << m.size() << "  Edges=" << edges << std::endl;
+						}
+						fin.close();
 					}
 				}
 			}
@@ -743,7 +892,7 @@ int main()
 		}
 
 		//std::cout << "n=" << nodes.size() << " qn=" << qtn.numItems() << " e=" << edges.size() << " qe=" << qte.numItems() << std::endl;
-		//std::cout << selection.size() << std::endl;
+		//std::cout << "s=" << selection.size() << " v=" << visibility.size() << " f=" << faces.size() << std::endl;
 
 		// Update the window
 		App.display();
