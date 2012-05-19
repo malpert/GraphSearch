@@ -50,7 +50,7 @@ std::vector<std::string> split( const std::string & s, const std::string & pat )
 int main()
 {
 	//
-    // Create the main rendering window
+	// Create the main rendering window
 	//
 	sf::RenderWindow App	( sf::VideoMode
 								( std::min(sf::VideoMode::getDesktopMode().width,(unsigned)600)
@@ -146,7 +146,7 @@ int main()
 				else if (Event.key.code == sf::Keyboard::F1) // F1
                 {
                     sf::Image Screen = App.capture();
-                    Screen.saveToFile("../media/screenshot.jpg");
+                    Screen.saveToFile("screenshot.jpg");
                 }
 				else if (Event.key.code == sf::Keyboard::LControl || Event.key.code == sf::Keyboard::RControl) // Control
 				{
@@ -227,6 +227,7 @@ int main()
 						selection.clear();
 						faces.clear();
 						visibility.clear();
+						locked = false;
 					}
 				}
 			}

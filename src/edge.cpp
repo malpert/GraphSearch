@@ -1,4 +1,4 @@
-#include "edge.h"
+﻿#include "edge.h"
 #include "node.h"
 #include "face.h"
 
@@ -198,6 +198,11 @@ void Edge::setQuadTree(QuadTree<Edge*> * quadTree)
 	qtree = quadTree;
 }
 
+bool isEqualFloat(float a, float b)
+{
+    return fabs(a - b) < 0.0001;
+}
+
 bool Edge::intersect(Edge * e1, Edge * e2, float * xret, float * yret)
 {
 	return Edge::intersect(e1->n1, e1->n2, e2->n1, e2->n2, xret, yret);
@@ -210,37 +215,85 @@ bool Edge::intersect(Edge * e1, Node * n1, Node * n2, float * xret, float * yret
 
 bool Edge::intersect(Node * n1, Node * n2, Node * n3, Node * n4, float * xret, float * yret)
 {
-	float x1 = n1->x,	y1 = n1->y;
-	float x2 = n2->x,	y2 = n2->y;
-	float x3 = n3->x,	y3 = n3->y;
-	float x4 = n4->x,	y4 = n4->y;
+#if 1
 
-	float d = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4);
+	// Line-segments go from p to p+r and q to q+s.
+	float px = n1->x,		py = n1->y;
+	float rx = n2->x - px,	ry = n2->y - py;
+	float qx = n3->x,		qy = n3->y;
+	float sx = n4->x - qx,	sy = n4->y - qy;
 
-	if (d == 0)
+	// Lines intersect if (P + t*R = Q + u*S) is solvable for t and u.
+	// Our particular 2d vector cross product: V × W = Vx*Wy − Vy*Wx
+	// t = ((Q-P) x S) / (R x S)
+	// u = ((Q-P) x R) / (R x S)
+	float rs = rx*sy - ry*sx;				// R x S
+	float qpx = qx - px,	qpy = qy - py;	// Q - P
+	float qps = qpx*sy - qpy*sx;			// (Q-P) x S
+	float qpr = qpx*ry - qpy*rx;			// (Q-P) x R
+
+	if (rs == 0)
 	{
-		return false;
+		if (qpr == 0) return true; // collinear
+		else return false; // parallel
 	}
-	else
+
+	float t = qps / rs;						// t = ((Q-P) x S) / (R x S)
+	float u = qpr / rs;						// u = ((Q-P) x R) / (R x S)
+	
+	// Restrict intersection to line-segments.
+	// Use > to disallow identical enpoints to
+	// count as as intersections, else use >=.
+	bool ret = (t > 0.f && t < 1.f && u > 0.f && u < 1.f);
+
+	if (ret && xret != 0 && yret != 0)
 	{
-		// Get the x and y
-		float pre = (x1*y2 - y1*x2);
-		float post = (x3*y4 - y3*x4);
-		float x = ( pre * (x3 - x4) - (x1 - x2) * post ) / d;
-		float y = ( pre * (y3 - y4) - (y1 - y2) * post ) / d;
-
-		// If the point of intersection is not within both line segments, then the segments do not intersect. The
-		// intersection point must not be an endpoint, i.e., lines must cross, not just touch. The equality check is
-		// there to test for this rare case, which would likely only occur if the floats held identical integral values.
-		if ( x <= std::min(x1, x2) || x >= std::max(x1, x2) || x <= std::min(x3, x4) || x >= std::max(x3, x4) ) return false;
-		if ( y <= std::min(y1, y2) || y >= std::max(y1, y2) || y <= std::min(y3, y4) || y >= std::max(y3, y4) ) return false;
-
-		// Return the point of intersection
-		if (xret != 0 && yret != 0)
-		{
-			*xret = x;
-			*yret = y;
-		}
-		return true;
+		// Return intersection point
+		*xret = px + rx*t;
+		*yret = py + ry*t;
 	}
+
+	return ret;
+
+#else
+
+	// E = B-A = ( Bx-Ax, By-Ay )
+	// F = D-C = ( Dx-Cx, Dy-Cy ) 
+	// P = ( -Ey, Ex )
+	// Q = ( -Fy, Fx
+	// h = ( (A-C) * P ) / ( F * P )
+	// g = ( (B-D) * Q ) / ( E * Q )
+	// intersect if 0 < h < 1 and 0 < g < 1
+	// intersection point = C + F*h
+
+	float ax = n1->x,	ay = n1->y;
+	float bx = n2->x,	by = n2->y;
+	float cx = n3->x,	cy = n3->y;
+	float dx = n4->x,	dy = n4->y;
+
+	float ex = bx-ax,	ey = by-ay;
+	float fx = dx-cx,	fy = dy-cy;
+	float px = -ey,		py = ex;
+	float denomh = fx*px + fy*py;
+	if (denomh == 0) return false;
+	float qx = -fy,		qy = fx;
+	float denomg = ex*qx + ey*qy;
+	if (denomg == 0) return false;
+	float numerh = (ax-cx) * px + (ay-cy) * py;
+	float h = numerh / denomh;
+	float numerg = (bx-dx) * qx + (by-dy) * qy;
+	float g = numerg / denomg;
+
+	bool ret = (h > 0.f && h < 1.f && g > 0.f && g < 1.f);
+
+	if (ret && xret != 0 && yret != 0)
+	{
+		// Return intersection point
+		*xret = cx + fx*h;
+		*yret = cy + fy*h;
+	}
+
+	return ret;
+
+#endif
 }
