@@ -7,6 +7,8 @@
 #include <stack>
 #include <fstream>
 
+#include <Windows.h>
+
 #include "node.h"
 #include "edge.h"
 #include "face.h"
@@ -49,6 +51,13 @@ std::vector<std::string> split( const std::string & s, const std::string & pat )
 
 int main()
 {
+	//
+	// Check if console available
+	//
+	bool hasConsole = false;
+	HWND console = GetConsoleWindow();
+	if (console) hasConsole = true;
+
 	//
 	// Create the main rendering window
 	//
@@ -388,8 +397,6 @@ int main()
 						//
 						// Save graph
 						//
-						std::cout << "Saving graph . . ." << std::endl;
-
 						std::map<Node*,int> m;
 						int id = 0;
 						for (auto it = nodes.begin(); it != nodes.end(); ++it)
@@ -403,10 +410,26 @@ int main()
 							v.push_back(std::make_pair(m[(*it)->n1], m[(*it)->n2]));
 						}
 
-						std::ofstream fout("../graphs/graph.dat");
-						if (!fout)
+
+						std::string filename = "graph.dat";
+						std::ofstream fout;
+
+						if (!keyShiftDown && hasConsole)
 						{
-							std::cerr << "\nError opening file for write" << std::endl;
+							SetForegroundWindow(console);
+							std::cout << "Save graph file name (blank for graph.dat): ";
+							std::string line;
+							std::getline(std::cin, line);
+							if (line.size()) filename = line;
+							SetForegroundWindow(App.getSystemHandle());
+						}
+
+						std::cout << "Saving graph \"" + filename + "\"" << std::endl;
+						fout.open("../graphs/" + filename);
+
+						if (!fout.is_open())
+						{
+							std::cerr << "\nError opening file for write: \"" + filename + "\"" << std::endl;
 						}
 						else
 						{
@@ -432,12 +455,25 @@ int main()
 						//
 						// Load graph
 						//
-						std::cout << "Loading graph . . ." << std::endl;
+						std::string filename = "graph.dat";
+						std::ifstream fin;
 
-						std::ifstream fin("../graphs/graph.dat");
-						if (!fin)
+						if (!keyShiftDown && hasConsole)
 						{
-							std::cerr << "Error opening file for read" << std::endl;
+							SetForegroundWindow(console);
+							std::cout << "Load graph file name (blank for graph.dat): ";
+							std::string line;
+							std::getline(std::cin, line);
+							if (line.size()) filename = line;
+							SetForegroundWindow(App.getSystemHandle());
+						}
+
+						std::cout << "Loading graph \"" + filename + "\"" << std::endl;
+						fin.open("../graphs/" + filename);
+
+						if (!fin.is_open())
+						{
+							std::cerr << "Error opening file for read: \"" + filename + "\"" << std::endl;
 						}
 						else
 						{
