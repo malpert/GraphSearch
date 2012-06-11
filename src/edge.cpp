@@ -8,7 +8,7 @@
 std::set<Edge*> * Edge::eset = 0;
 QuadTree<Edge*> * Edge::qtree = 0;
 
-Edge::Edge(Node * n1, Node * n2, float thickness) : n1(n1), n2(n2), ht(thickness/2), selected(false), updateDisabled(false), faces(0), dummy(false)
+Edge::Edge(Node * n1, Node * n2, float thickness) : n1(n1), n2(n2), ht(thickness/2), selected(false), updateDisabled(false), faces(0)
 {
 	// Assumes nodes ordered by address
 
@@ -18,12 +18,8 @@ Edge::Edge(Node * n1, Node * n2, float thickness) : n1(n1), n2(n2), ht(thickness
 	init();
 }
 
-Edge::Edge(Node * n1, Node * n2) : n1(n1), n2(n2), dummy(true) {}
-
 Edge::~Edge()
 {
-	if (dummy) return;
-
 	// Erase nodes from their neighbors sets
 	n1->neighbors.erase(n2);
 	n2->neighbors.erase(n1);
@@ -169,25 +165,6 @@ bool Edge::destroyEdge(Node * n1, Node * n2)
 	return false;
 }
 
-Edge * Edge::findEdge(const std::set<Edge*, Edge::Comp> & s, Node * n1, Node * n2)
-{
-	// If null
-	if (!n1 || !n2) return false;
-	// If same
-	if (n1 == n2) return false;
-
-	Edge * e;
-	if (n1 < n2)
-		e = new Edge(n1, n2);
-	else
-		e = new Edge(n2, n1);
-	auto it = s.find(e);
-	delete e;
-	if (it != s.end())
-		return *it;
-	return 0;
-}
-
 void Edge::setEdgeSet(std::set<Edge*> * edgeSet)
 {
 	eset = edgeSet;
@@ -218,19 +195,19 @@ bool Edge::intersect(Node * n1, Node * n2, Node * n3, Node * n4, float * xret, f
 #if 1
 
 	// Line-segments go from p to p+r and q to q+s.
-	float px = n1->x,		py = n1->y;
-	float rx = n2->x - px,	ry = n2->y - py;
-	float qx = n3->x,		qy = n3->y;
-	float sx = n4->x - qx,	sy = n4->y - qy;
+	float px = n1->x,       py = n1->y;
+	float rx = n2->x - px,  ry = n2->y - py;
+	float qx = n3->x,       qy = n3->y;
+	float sx = n4->x - qx,  sy = n4->y - qy;
 
 	// Lines intersect if (P + t*R = Q + u*S) is solvable for t and u.
 	// Our particular 2d vector cross product: V × W = Vx*Wy − Vy*Wx
 	// t = ((Q-P) x S) / (R x S)
 	// u = ((Q-P) x R) / (R x S)
-	float rs = rx*sy - ry*sx;				// R x S
-	float qpx = qx - px,	qpy = qy - py;	// Q - P
-	float qps = qpx*sy - qpy*sx;			// (Q-P) x S
-	float qpr = qpx*ry - qpy*rx;			// (Q-P) x R
+	float rs = rx*sy - ry*sx;               // R x S
+	float qpx = qx - px,    qpy = qy - py;  // Q - P
+	float qps = qpx*sy - qpy*sx;            // (Q-P) x S
+	float qpr = qpx*ry - qpy*rx;            // (Q-P) x R
 
 	if (rs == 0)
 	{
@@ -238,8 +215,8 @@ bool Edge::intersect(Node * n1, Node * n2, Node * n3, Node * n4, float * xret, f
 		else return false; // parallel
 	}
 
-	float t = qps / rs;						// t = ((Q-P) x S) / (R x S)
-	float u = qpr / rs;						// u = ((Q-P) x R) / (R x S)
+	float t = qps / rs;                     // t = ((Q-P) x S) / (R x S)
+	float u = qpr / rs;                     // u = ((Q-P) x R) / (R x S)
 	
 	// Restrict intersection to line-segments.
 	// Use > to disallow identical enpoints to
@@ -266,17 +243,17 @@ bool Edge::intersect(Node * n1, Node * n2, Node * n3, Node * n4, float * xret, f
 	// intersect if 0 < h < 1 and 0 < g < 1
 	// intersection point = C + F*h
 
-	float ax = n1->x,	ay = n1->y;
-	float bx = n2->x,	by = n2->y;
-	float cx = n3->x,	cy = n3->y;
-	float dx = n4->x,	dy = n4->y;
+	float ax = n1->x,  ay = n1->y;
+	float bx = n2->x,  by = n2->y;
+	float cx = n3->x,  cy = n3->y;
+	float dx = n4->x,  dy = n4->y;
 
-	float ex = bx-ax,	ey = by-ay;
-	float fx = dx-cx,	fy = dy-cy;
-	float px = -ey,		py = ex;
+	float ex = bx-ax,  ey = by-ay;
+	float fx = dx-cx,  fy = dy-cy;
+	float px = -ey,    py = ex;
 	float denomh = fx*px + fy*py;
 	if (denomh == 0) return false;
-	float qx = -fy,		qy = fx;
+	float qx = -fy,    qy = fx;
 	float denomg = ex*qx + ey*qy;
 	if (denomg == 0) return false;
 	float numerh = (ax-cx) * px + (ay-cy) * py;

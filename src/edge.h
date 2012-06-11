@@ -31,7 +31,6 @@ public:
 private:
 
 	Edge(Node * n1, Node * n2, float thickness);
-	Edge(Node * n1, Node * n2); // Dummy for finding within a set using Comp
 
 public:
 
@@ -56,7 +55,6 @@ public:
 	bool selected;
 	bool updateDisabled;
 	int faces;
-	bool dummy;
 	sf::RectangleShape rect;
 	sf::RectangleShape srect;
 
@@ -65,7 +63,6 @@ public:
 	//
 	static Edge * createEdge(Node * n1, Node * n2, float thickness = 2);
 	static bool destroyEdge(Node * n1, Node * n2);
-	static Edge * findEdge(const std::set<Edge*, Edge::Comp> & s, Node * n1, Node * n2);
 	static void setEdgeSet(std::set<Edge*> * edgeSet);
 	static void setQuadTree(QuadTree<Edge*> * quadTree);
 	static std::set<Edge*> * eset;

@@ -146,7 +146,7 @@ int main()
 				else if (Event.key.code == sf::Keyboard::F1) // F1
                 {
                     sf::Image Screen = App.capture();
-                    Screen.saveToFile("screenshot.jpg");
+                    Screen.saveToFile("../media/screenshot.jpg");
                 }
 				else if (Event.key.code == sf::Keyboard::LControl || Event.key.code == sf::Keyboard::RControl) // Control
 				{
@@ -403,7 +403,7 @@ int main()
 							v.push_back(std::make_pair(m[(*it)->n1], m[(*it)->n2]));
 						}
 
-						std::ofstream fout("graph.dat");
+						std::ofstream fout("../graphs/graph.dat");
 						if (!fout)
 						{
 							std::cerr << "\nError opening file for write" << std::endl;
@@ -434,7 +434,7 @@ int main()
 						//
 						std::cout << "Loading graph . . ." << std::endl;
 
-						std::ifstream fin("graph.dat");
+						std::ifstream fin("../graphs/graph.dat");
 						if (!fin)
 						{
 							std::cerr << "Error opening file for read" << std::endl;
@@ -864,8 +864,8 @@ int main()
 		//App.draw(vertices, 2, sf::Lines);
 
 		// Draw QuadTree
-		//qtn.draw(App);
-		qte.draw(App);
+		qtn.draw(App);
+		//qte.draw(App);
 
 		// Draw edges
 		for (auto it = edges.begin(); it != edges.end(); ++it)
