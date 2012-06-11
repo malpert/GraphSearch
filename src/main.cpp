@@ -65,7 +65,9 @@ int main()
 								( std::min(sf::VideoMode::getDesktopMode().width,(unsigned)600)
 								, std::min(sf::VideoMode::getDesktopMode().height,(unsigned)600)
 								, 32)
-							, "Graph Search");
+							, "Graph Search"
+							, sf::Style::Close
+							, sf::ContextSettings(0, 0, 16));
 
 	//
 	// Create lines
