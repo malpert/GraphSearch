@@ -1,4 +1,5 @@
 #include <SFML/Graphics.hpp>
+
 #include <iostream>
 #include <vector>
 #include <set>
@@ -6,6 +7,8 @@
 #include <algorithm>
 #include <stack>
 #include <fstream>
+
+#include <unordered_set>
 
 #include <Windows.h>
 
@@ -15,39 +18,46 @@
 #include "selection.h"
 #include "quadtree.h"
 
-std::vector<std::string> split( const std::string & s, const std::string & pat )
+
+
+std::vector<std::string> split(const std::string & s, const std::string & pat)
 {
-	std::vector<std::string> v;
-	// if pattern is emptry string, pushback entire string and return
-	if( pat == "" )
+	std::vector<std::string> v; // Named RVO VC2005+
+
+	// If pattern is emptry string, pushback entire string and return
+	if (pat.empty())
 	{
-		v.push_back( s );
-		return v;
+		v.push_back(s);
 	}
-
-	std::string::size_type next, last;
-	next = 0;
-	last = 0;
-
-	// loop until pattern not found
-	while( next != std::string::npos )
+	// Else, split
+	else
 	{
-		// find pattern
-		next = s.find(pat, last);
-		if( next != std::string::npos )
+		std::string::size_type next, last;
+		next = 0;
+		last = 0;
+
+		// Loop until pattern not found
+		while (next != std::string::npos)
 		{
-			// push back substr between last pattern and new pattern
-			v.push_back( s.substr(last, next-last) );
-			// next search will start from right after last pattern
-			last = next + pat.size();
+			// Find pattern
+			next = s.find(pat, last);
+			if (next != std::string::npos)
+			{
+				// Push back substr between last pattern and new pattern
+				v.push_back(s.substr(last, next-last));
+				// Next search will start from right after last pattern
+				last = next + pat.size();
+			}
 		}
+
+		// Last pattern found, push back last substr
+		v.push_back(s.substr(last));
 	}
 
-	// last pattern found, push back last substr
-	v.push_back( s.substr(last) );
-
-	return v;
+	return v; // Named RVO VC2005+
 }
+
+
 
 int main()
 {
@@ -67,26 +77,26 @@ int main()
 								, 32)
 							, "Graph Search"
 							, sf::Style::Close
-							, sf::ContextSettings(0, 0, 16));
+							, sf::ContextSettings(0, 0, 8));
 
 	//
 	// Create lines
 	//
-	std::vector<sf::RectangleShape*> lines;
-	for (float i = -1; i < App.getSize().x; i += float(App.getSize().x) / 20)
-	{
-		sf::RectangleShape* r = new sf::RectangleShape(sf::Vector2f(2, float(App.getSize().y)));
-		r->setPosition(i, 0);
-		r->setFillColor(sf::Color::Black);
-		lines.push_back(r);
-	}
-	for (float i = -1; i < App.getSize().y; i += float(App.getSize().y) / 20)
-	{
-		sf::RectangleShape* r = new sf::RectangleShape(sf::Vector2f(float(App.getSize().x), 2));
-		r->setFillColor(sf::Color::Black);
-		r->setPosition(0, i);
-		lines.push_back(r);
-	}
+	//std::vector<sf::RectangleShape*> lines;
+	//for (float i = -1; i < App.getSize().x; i += float(App.getSize().x) / 20)
+	//{
+	//	sf::RectangleShape* r = new sf::RectangleShape(sf::Vector2f(2, float(App.getSize().y)));
+	//	r->setPosition(i, 0);
+	//	r->setFillColor(sf::Color::Black);
+	//	lines.push_back(r);
+	//}
+	//for (float i = -1; i < App.getSize().y; i += float(App.getSize().y) / 20)
+	//{
+	//	sf::RectangleShape* r = new sf::RectangleShape(sf::Vector2f(float(App.getSize().x), 2));
+	//	r->setFillColor(sf::Color::Black);
+	//	r->setPosition(0, i);
+	//	lines.push_back(r);
+	//}
 
 	//
 	// Graph
@@ -130,7 +140,7 @@ int main()
 	bool locked = false;
 
 	//
-    // Start game loop
+	// Start game loop
 	//
     while (App.isOpen())
     {
@@ -897,9 +907,10 @@ int main()
 
 		// Draw lines
 		//for (size_t i = 0; i < lines.size(); ++i) App.draw(*(lines[i]));
-		//sf::Vertex vertices[2] =	{ sf::Vertex(sf::Vector2f(123,231), sf::Color::Blue)
-		//							, sf::Vertex(sf::Vector2f(257,249), sf::Color::Red) };
-		//App.draw(vertices, 2, sf::Lines);
+		//sf::Vertex vertices[] =	{ sf::Vertex(sf::Vector2f(123,231), sf::Color::Blue)
+		//							, sf::Vertex(sf::Vector2f(257,249), sf::Color::Red)
+		//							, sf::Vertex(sf::Vector2f(350,100), sf::Color::Green) };
+		//App.draw(vertices, 3, sf::LinesStrip);
 
 		// Draw QuadTree
 		qtn.draw(App);
