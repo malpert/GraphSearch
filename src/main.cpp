@@ -185,7 +185,7 @@ int main()
 				{
 					keySpaceDown = true;
 				}
-				else if (Event.key.code == sf::Keyboard::Back || Event.key.code == sf::Keyboard::Delete) // Backspace or Delete
+				else if (Event.key.code == sf::Keyboard::BackSpace || Event.key.code == sf::Keyboard::Delete) // Backspace or Delete
 				{
 					if (!locked)
 					{
